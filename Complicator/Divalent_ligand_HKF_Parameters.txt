@@ -1,0 +1,41 @@
+LIGAND = "CO3-2"
+ZL, GL, HL, SL, CPL, VL = -2, -126191, -161385, -11.95, -69.5, -5.02 # Shock et al., 1997
+
+LIGAND = "SO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -177930, -217400, 4.5, -64.38, 13.88 # Shock et al., 1997
+
+LIGAND = "HPO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -260310, -308815, -8.0, -58.3, 5.4 # Shock et al., 1997
+
+LIGAND = "SeO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -105500, -143200, 12.9, -55.6, 21.7 # Shock et al., 1997
+
+LIGAND = "SO3-2"
+ZL, GL, HL, SL, CPL, VL = -2, -116300, -151900, -7.0, -67.5, -3.1 # Shock et al., 1997
+
+LIGAND = "S2O3-2"
+ZL, GL, HL, SL, CPL, VL = -2, -124900, -155000, 16.0, -57.3, 28.5 # Shock et al., 1997
+
+LIGAND = "SeO3-2"
+ZL, GL, HL, SL, CPL, VL = -2, -105500, -143200, 12.9, -55.6, 21.7 # Shock et al., 1997
+
+LIGAND = "MoO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -200400, -238300, 9.0, -47.5, 30.4 # Shock et al., 1997
+
+LIGAND = "WO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -218500, -236500, 9.7, -44.5, 32.2 # Shock et al., 1997
+
+LIGAND = "CrO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -174800, -210930, 13.8, -62.6, 19.8 # Shock et al., 1997
+
+LIGAND = "Cr2O7-2"
+ZL, GL, HL, SL, CPL, VL = -2, -312970, -355370, 72.0, -29.1, 72.7 # Shock et al., 1997
+
+LIGAND = "HAsO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -170790, -216620, -0.4, -47.5, 11.3 # Shock et al., 1997
+
+LIGAND = "HVO4-2"
+ZL, GL, HL, SL, CPL, VL = -2, -233000, -277000, 4.0, 87.3, 12.5 # Shock et al., 1997
+
+LIGAND = "H2P2O7-2"
+ZL, GL, HL, SL, CPL, VL = -2, -480400, -544600, 39.0, 17.6, 47.1 # Shock et al., 1997}
