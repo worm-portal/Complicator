@@ -1,2 +1,2 @@
-LIGAND = "P2O7-4"
+ligand = "P2O7-4"
 ZL, GL, HL, SL, CPL, VL = -4, -458700, -542800, -28.0, -139.1, 21.7 # Shock et al., 1997

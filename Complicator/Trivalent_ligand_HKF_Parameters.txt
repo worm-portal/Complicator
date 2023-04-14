@@ -1,11 +1,11 @@
-LIGAND = "PO4-3"
+ligand = "PO4-3"
 ZL, GL, HL, SL, CPL, VL = -3, -243500, -305300, -53.0, -124.6, -30.6 # Shock et al., 1997
 
-LIGAND = "AsO4-3"
+ligand = "AsO4-3"
 ZL, GL, HL, SL, CPL, VL = -3, -154970, -212270, -38.9, -116.1, -18.7 # Shock et al., 1997
 
-LIGAND = "VO4-3"
+ligand = "VO4-3"
 ZL, GL, HL, SL, CPL, VL = -3, -214900, -270600, -35.2, 38.0, -16.9 # Shock et al., 1997
 
-LIGAND = "HP2O7-3"
+ligand = "HP2O7-3"
 ZL, GL, HL, SL, CPL, VL = -3, -471400, -543700, 11.0, -28.7, 36.5 # Shock et al., 1997}

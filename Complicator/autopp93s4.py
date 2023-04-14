@@ -1,20 +1,62 @@
-last_updated = "220331"
-
 # load libraries
 import sys, os
 import re
 from datetime import datetime
 import pandas as pd
 import pkg_resources
+import decimal
+import shutil
+import warnings
 
-rt = 3 # round output to how many decimal places?
+
+def sf(val, sf):
+    val = "{0:.{prec}g}".format(val, prec=sf)
+    if "e" in val and abs(float(val)) >= 1:
+        val = str(int(float(val)))
+    elif "e" not in val and abs(float(val)) < 1:
+        val = val + "0"*(sf - find_sigfigs(val))
+    elif "e" in val and abs(float(val)) < 1:
+        val = "{0:.{prec}f}".format(float(val), prec=20) # add arbitrarily high trailing zeros
+        val = re.sub("0+$", "", val) # trim off all trailing zeros
+        val = val + "0"*(sf - find_sigfigs(val)) # add back correct number of trailing zeros
+    return val
 
 
-# GB: function to write output to a csv
-def write_output(filename, CATION, LIGAND, nth_complex, G, H, S, CP, V, a1, a2, a3, a4, c1, c2, wcon, Z):
+def __get_formula_ox_dict(name, df):
     
-    cat_nocharge = re.sub("\+.*$", "", CATION)
-    lig_nocharge = re.sub("\-.*$", "", LIGAND)
+    entry = df[df["name"]==name]
+    formula_ox = list(entry["formula_ox"])[0]
+    formula_ox_split = formula_ox.split(" ")
+
+    # remove any "" (empty strings) from list
+    formula_ox_split = list(filter(("").__ne__, formula_ox_split))
+    
+    formula_ox_dict = {}
+    for item in formula_ox_split:
+        coeff = re.search(r'^\D*(\d+(?:\.\d+)?)', item)
+        if coeff != None:
+            coeff = coeff.group()
+        if coeff == item or coeff == None:
+            coeff = 1
+            elem = item
+        else:
+            elem = item.split(coeff)[1]
+        formula_ox_dict[elem] = float(coeff)
+        
+    return formula_ox_dict
+
+
+def __write_output(filename, cation, ligand, nth_complex, G, H, S, CP, V,
+                   a1, a2, a3, a4, c1, c2, wcon, Z, azero,
+                   cation_dissrxn_dict, ligand_dissrxn_dict, data_path,
+                   cation_formula_ox_dict, ligand_formula_ox_dict,
+                   append_to_data_path, replace, skip_duplicates):
+    """
+    Write output to a CSV.
+    """
+    
+    cat_nocharge = re.sub("\+.*$", "", cation)
+    lig_nocharge = re.sub("\-.*$", "", ligand)
     
     if Z > 1:
         this_charge = "+" + str(Z)
@@ -27,6 +69,14 @@ def write_output(filename, CATION, LIGAND, nth_complex, G, H, S, CP, V, a1, a2, 
     else:
         this_charge = str(Z)
     
+    azero_val = 4
+    if Z == 2:
+        azero_val = 6
+    elif Z == 3:
+        azero_val = 9
+    elif Z == 4:
+        azero_val = 11
+    
     if nth_complex == 1:
         ligand_subscript = ""
     else:
@@ -34,13 +84,40 @@ def write_output(filename, CATION, LIGAND, nth_complex, G, H, S, CP, V, a1, a2, 
     
     this_date = datetime.today().strftime('%Y%m%d') 
     
+    complex_name = cat_nocharge + "(" + lig_nocharge + ")" + ligand_subscript + this_charge
+    
+    cation_dissrxn_dict_coeff = {name:coeff*1 for name, coeff in cation_dissrxn_dict.items()} # future: "1" can be replaced with number of cations
+    ligand_dissrxn_dict_coeff = {name:coeff*nth_complex for name, coeff in ligand_dissrxn_dict.items()}
+    
+    cation_ligand_dissrxn_dict = {k: cation_dissrxn_dict_coeff.get(k, 0) + ligand_dissrxn_dict_coeff.get(k, 0) for k in set(cation_dissrxn_dict_coeff) | set(ligand_dissrxn_dict_coeff)}
+    cation_ligand_dissrxn_formatted = ["{:.4f}".format(coeff) + " " + name for name, coeff in cation_ligand_dissrxn_dict.items()]
+    
+    cation_ligand_dissrxn_formatted = " ".join(cation_ligand_dissrxn_formatted)
+    
+    complex_dissrxn = "-1.0000 " + complex_name + " " + cation_ligand_dissrxn_formatted
+    
+    cation_formula_ox_dict_coeff = {name:coeff*1 for name, coeff in cation_formula_ox_dict.items()} # future: "1" can be replaced with number of cations
+    ligand_formula_ox_dict_coeff = {name:coeff*nth_complex for name, coeff in ligand_formula_ox_dict.items()}
+    complex_formula_ox_dict = {k: cation_formula_ox_dict_coeff.get(k, 0) + ligand_formula_ox_dict_coeff.get(k, 0) for k in set(cation_formula_ox_dict_coeff) | set(ligand_formula_ox_dict_coeff)}
+    
+    complex_formula_ox = []
+    for elem,coeff in complex_formula_ox_dict.items():
+        if coeff == 1:
+            complex_formula_ox.append(str(elem))
+        elif coeff == int(coeff):
+            complex_formula_ox.append(str(int(coeff))+str(elem))
+        else:
+            complex_formula_ox.append(str(coeff)+str(elem))
+            
+    complex_formula_ox = " ".join(complex_formula_ox)
+    
     data={
-        "name": [cat_nocharge + "(" + lig_nocharge + ")" + ligand_subscript + this_charge],
+        "name": [complex_name],
         "abbrv": [cat_nocharge + "(" + lig_nocharge + ")" + ligand_subscript + this_charge],
         "formula": [cat_nocharge + "(" + lig_nocharge + ")" + ligand_subscript + this_charge],
         "state": ["aq"],
         "ref1": ["autocomplicator"],
-        "ref2": ["1" + " " + CATION + "," + str(nth_complex) + " " + LIGAND],  # future: "1" can be replaced with number of cations
+        "ref2": ["NA"],
         "date": [this_date],
         "E_units": ["cal"],
         "G": [G],
@@ -56,19 +133,62 @@ def write_output(filename, CATION, LIGAND, nth_complex, G, H, S, CP, V, a1, a2, 
         "c2.f": [c2],
         "omega.lambda": [wcon],
         "z.T":[Z],
+        "azero":[azero_val],
+        "neutral_ion_type":[0],
+        "dissrxn":[complex_dissrxn],
+        "tag":[""],
+        "formula_ox":[complex_formula_ox],
+        "category_1":["inorganic_aq"],
+        "category_2":[""],
     }
     df = pd.DataFrame(data)
+    
+    if append_to_data_path:
+        shutil.copyfile(data_path, filename+'.csv')
     
     try:
         file_exists = os.path.isfile(filename+'.csv')
         if file_exists:
             with open(filename+'.csv', 'a') as f:
-                df.to_csv(f, header=False, index=False)
+
+                f_df = pd.read_csv(filename+'.csv')
+                
+                
+                
+                # check that a monoligand complex without parentheses isn't already
+                # in the thermodynamic database. Warn or skip.
+                keep = True
+                complex_name_no_parentheses = complex_name.replace("(", "").replace(")", "")
+                if complex_name_no_parentheses in list(f_df["name"]):
+                    if skip_duplicates:
+                        keep = False
+                    else:
+                        msg = ("Warning: adding " + complex_name + " to "
+                            "" + filename + ".csv but a species called "
+                            "" + complex_name_no_parentheses + " is already present. "
+                            "Ensure this is not a duplicate before using the output "
+                            "from the Complicator. Set skip_duplicates=True "
+                            "and rerun to skip and exclude this complex.")
+                        warnings.warn(msg)
+                
+                if keep and replace and complex_name in list(f_df["name"]):
+
+                    cols = list(f_df.columns) 
+                    f_df.iloc[f_df["name"]==complex_name, :] = df
+
+                    f_df.to_csv(filename+'.csv', header=True, index=False)
+
+                elif keep and complex_name not in list(f_df["name"]):
+                    df.to_csv(f, header=False, index=False)
+                else:
+                    pass
+
+
+
         else:
             df.to_csv(filename+'.csv', index=False)
             
     except:
-        import warnings
         warnings.warn("The file '" + filename + ".csv' could not be written! Make sure this is a valid filename.")
     
     return df
@@ -76,25 +196,57 @@ def write_output(filename, CATION, LIGAND, nth_complex, G, H, S, CP, V, a1, a2, 
 
 # function to count significant digits
 # adapted from https://stackoverflow.com/questions/8142676/python-counting-significant-digits
-# function to count significant digits
-# adapted from https://stackoverflow.com/questions/8142676/python-counting-significant-digits
 def find_sigfigs(x):
-    '''Returns the number of significant digits in a number. This takes into account
-       strings formatted in 1.23e+3 format and even strings such as 123.450'''
+    
+    '''
+    Get the number of significant digits in a string representing a number up to
+    eight digits long.
+
+    Parameters
+    ----------
+    x : str
+        A string denoting a number. This can include scientific notation.
+    
+    Parameters
+    ----------
+    int
+        The number of significant digits.
+    
+    Examples
+    --------
+    >>> find_sigfigs("5.220")
+    4
+    
+    This also takes into account scientific notation.
+    
+    >>> find_sigfigs("1.23e+3")
+    3
+    
+    Insignificant zeros are ignored.
+    
+    >>> find_sigfigs("4000")
+    1
+    
+    A decimal point denotes that zeros are significant.
+    
+    >>> find_sigfigs("4000.")
+    4
+    '''
+    
+    x = str(x)
+    
     # change all the 'E' to 'e'
     x = x.lower()
-    x = re.sub("^-", "", x)# remove negative sign
+    if ('-' == x[0]):
+        x = x[1:]
     if ('e' in x):
         # return the length of the numbers before the 'e'
         myStr = x.split('e')
-        if ("." in myStr[0]):
-            return len( myStr[0] ) - 1 # to compenstate for the decimal point
-        else:
-            return len( myStr[0] )
+        return len(myStr[0]) - 1  # to compenstate for the decimal point
     else:
         # put it in e format and return the result of that
         ### NOTE: because of the 8 below, it may do crazy things when it parses 9 sigfigs
-        n = ('%.*e' %(8, float(x))).split('e')
+        n = ('%.*e' % (8, float(x))).split('e')
         # remove and count the number of removed user added zeroes. (these are sig figs)
         if '.' in x:
             s = x.replace('.', '')
@@ -109,114 +261,172 @@ def find_sigfigs(x):
     return find_sigfigs('e'.join(n))
 
 
-def complicate(cation_override, ligand_override, beta, sest, out_name, 
-               sigfigs=False, metal_ref_path=None, ligand_ref_path=None):
+def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
+               sigfigs=False, data_path=None, append_to_data_path=True,
+               correct_basis=True, replace=False, skip_duplicates=False):
+    
+    """
+    Estimate the thermodynamic properties and Helgeson-Kirkham-Flowers (HKF)
+    equation of state parameters for aqueous inorganic complexes.
+    
+    Parameters
+    ----------
+    cation : str
+        Name of the cation in the aqueous complex.
+        
+    ligand : str
+        Name of the ligand in the aqueous complex.
+    
+    beta : list of float
+        List of four association equilibrium constants for the first association,
+        second association, and so on. If a constant doesn't apply, use 0.
+       
+    sest : list of float
+        List of four entropies of association for the first association, second
+        association, and so on.  If an entropy doesn't apply, use 0.
+    
+    azero : float, default 4
+        Aqueous species hard core diameter, a parameter in the Debeye-Hückel
+        B-dot equation (Helgeson 1969) used to calculate activity coefficients.
+        Units are in angstroms.
+    
+    out_name : str
+        Name of the CSV output file to write.
+    
+    rt : int, default 3
+        Round output values to how many decimal places? Ignored if `sigfigs` is
+        True.
+    
+    sigfigs : bool, default False
+        Experimental. Round output values to a number of significant figures
+        determined by number of significant figures in values used to make the
+        estimation?
+    
+    data_path : str, optional
+        File path and name of a custom thermodynamic database CSV. If undefined,
+        the default WORM database will be used.
+    
+    append_to_data_path : bool, default True
+        Append results to a copy of the thermodynamic database defined by
+        `data_path`?
+    
+    correct_basis : bool, default True
+        If a cation or ligand is not a strict or auxiliary basis species in the
+        thermodynamic database, ensure the dissociation reaction of the
+        resulting complex includes only basis species? The default is True
+        because complexes that are sent to aqueous equilibration package AqEquil
+        require dissociation reactions into strict or auxiliary basis species.
+    
+    skip_duplicates : bool, default False
+        Detect whether a complex with a monovalent ligand is already in the
+        thermodynamic database without parentheses. E.g., if "Ca(HCO3)+" is being
+        added, check that a species named "CaHCO3+" isn't already in the database.
+        If set to False, the species will be added anyway, but the user will
+        be warned. If set to True, the species will not be added.
+    
+    Returns
+    -------
+    df : pandas dataframe
+        A dataframe with estimated properties and HKF parameters of the aqueous
+        inorganic complex.
+    """
+    
     
     BETA1, BETA2, BETA3, BETA4 = beta
     sest1, sest2, sest3, sest4 = sest
-    
-    # look up metal cation values from reference sheet
-    # open cation reference sheet
-    try:
-        if metal_ref_path == None:
-            metal_ref_path = "Metal_HKF_Parameters.txt"
-            metal_ref = pkg_resources.resource_string(__name__, metal_ref_path).decode("utf-8")
-            d = "\n"
-            metal_ref_split = metal_ref.split(d)
-            metal_ref = [line+d for line in metal_ref_split]
-        else:
-            metal_ref = open(metal_ref_path, "r").readlines()
-    except:
-        print("Error in cation override. Could not find or open", metal_ref_path)
-        sys.exit(0)
-
-    # look up user-supplied cation in reference sheet
-    try:
-        to_exec = metal_ref[metal_ref.index('CATION = "' + cation_override + '"\n') + 1]
-        to_exec = to_exec.replace("\n", "")
-    except:
-        print("Error in cation override. Could not find entry for", cation_override, "in reference sheet.")
-        sys.exit(0)
-
-    # get significant digits for each value
-    try:
-        cation_vals = re.sub(" #.*$", "", to_exec) # removes comment
-        cation_vals = cation_vals.split(" = ")[1]
-        cation_vals = cation_vals.split(", ")
-        cation_vals = [re.sub("\.$", "", val) for val in cation_vals] # removes terminating periods TODO: fix this in cation database
-        GC_sf = find_sigfigs(cation_vals[1])
-        HC_sf = find_sigfigs(cation_vals[2])
-        SC_sf = find_sigfigs(cation_vals[3])
-        CPC_sf = find_sigfigs(cation_vals[4])
-        VC_sf = find_sigfigs(cation_vals[5])
-    except:
-        print("Error in cation override. Could not count significant digits for values supplied for", cation_override)
-        print("Cation values:", cation_vals)
-        sys.exit(0)
-
-    # evaluate entry as code
-    try:
-        exec('CATION = "' + cation_override + '"')
-        exec(to_exec)
-    except:
-        print("Error in cation override. Could not evaluate", to_exec, "as Python code.")
-        sys.exit(0)
-
+            
+    if data_path == None:
+        thermo_data = pkg_resources.resource_stream(__name__, "wrm_data.csv")
+        thermo_data = pd.read_csv(thermo_data, dtype=object)
+    else:
+        thermo_data = pd.read_csv(data_path)
         
+    cation_entry = thermo_data[thermo_data["name"]==cation]
+    ligand_entry = thermo_data[thermo_data["name"]==ligand]
         
-    # look up ligand values from reference sheet
-    # open ligand reference sheet
-    try:
-        if ligand_ref_path == None:
-            ligand_ref_path = "Monovalent_ligand_HKF_Parameters.txt"
-            ligand_ref = pkg_resources.resource_string(__name__, ligand_ref_path).decode("utf-8")
-            d = "\n"
-            ligand_ref_split = ligand_ref.split(d)
-            ligand_ref = [line+d for line in ligand_ref_split]
-        else:
-            ligand_ref = open(ligand_ref_path, "r").readlines()
-    except:
-        print("Error in ligand override. Could not find or open", ligand_ref_path)
-        sys.exit(0)
+    if cation_entry.empty:
+        msg = "Could not find entry for " + cation + " in reference sheet."
+        raise Exception(msg)
+        
+    if ligand_entry.empty:
+        msg = "Could not find entry for " + ligand + " in reference sheet."
+        raise Exception(msg)
+        
+    if cation_entry["tag"].values[0] != "basis" and cation_entry["tag"].values[0] != "aux" and correct_basis:
+        cation_dissrxn = cation_entry["dissrxn"].values[0]
+        cation_dissrxn_split = cation_dissrxn.split(" ")
+        cation_dissrxn_names = cation_dissrxn_split[1::2]
+        cation_dissrxn_coeffs = cation_dissrxn_split[::2]
+        
+        cation_dissrxn_dict_prediv = {name:float(coeff) for name,coeff in zip(cation_dissrxn_names, cation_dissrxn_coeffs)}
+        div_val = abs(cation_dissrxn_dict_prediv[cation])
+        cation_dissrxn_dict = {name:coeff/div_val for name,coeff in cation_dissrxn_dict_prediv.items()}
+        del cation_dissrxn_dict[cation]
+        
+        cation_dissrxn_dict = cation_dissrxn_dict/abs(cation_dissrxn_dict[cation])
+        
+        print(cation + " is not a strict or auxiliary basis species. "
+              "Dissociation reactions of the complex will assume the "
+              "cation dissociates according to: " + cation_dissrxn)
+    else:
+        cation_dissrxn_dict = {cation:1}
 
-    # look up user-supplied ligand in reference sheet
-    try:
-        to_exec = ligand_ref[ligand_ref.index('LIGAND = "' + ligand_override + '"\n') + 1]
-        to_exec = to_exec.replace("\n", "")
-    except:
-        print("Error in ligand override. Could not find entry for", ligand_override, "in reference sheet.")
-        sys.exit(0)
-
-    # get significant digits for each value
-    try:
-        ligand_vals = re.sub(" #.*$", "", to_exec) # removes comment
-        ligand_vals = ligand_vals.split(" = ")[1]
-        ligand_vals = ligand_vals.split(", ")
-        ligand_vals = [re.sub("\.$", "", val) for val in ligand_vals] # removes terminating periods TODO: fix this in cation database
-        GL_sf = find_sigfigs(ligand_vals[1])
-        HL_sf = find_sigfigs(ligand_vals[2])
-        SL_sf = find_sigfigs(ligand_vals[3])
-        CPL_sf = find_sigfigs(ligand_vals[4])
-        VL_sf = find_sigfigs(ligand_vals[5])
-    except:
-        print("Error in ligand override. Could not count significant digits for values supplied for", ligand_override)
-        print("Ligand values:", ligand_vals)
-        sys.exit(0)
-
-    # evaluate entry as code
-    try:
-        exec('LIGAND = "' + ligand_override + '"')
-        exec(to_exec)
-    except:
-        print("Error in ligand override. Could not evaluate", to_exec, "as Python code.")
-        sys.exit(0)
-
-    CATION = cation_override
-    ZC, GC, HC, SC, CPC, VC = cation_vals[0], cation_vals[1], cation_vals[2], cation_vals[3], cation_vals[4], cation_vals[5]
-    ZC, GC, HC, SC, CPC, VC = int(float(ZC)), float(GC), float(HC), float(SC), float(CPC), float(VC)       
+    if ligand_entry["tag"].values[0] != "basis" and ligand_entry["tag"].values[0] != "aux" and correct_basis:
+        ligand_dissrxn = ligand_entry["dissrxn"].values[0]
+        ligand_dissrxn_split = ligand_dissrxn.split(" ")
+        ligand_dissrxn_names = ligand_dissrxn_split[1::2]
+        ligand_dissrxn_coeffs = ligand_dissrxn_split[::2]
+        
+        ligand_dissrxn_dict_prediv = {name:float(coeff) for name,coeff in zip(ligand_dissrxn_names, ligand_dissrxn_coeffs)}
+        div_val = abs(ligand_dissrxn_dict_prediv[ligand])
+        ligand_dissrxn_dict = {name:coeff/div_val for name,coeff in ligand_dissrxn_dict_prediv.items()}
+        del ligand_dissrxn_dict[ligand]
+        
+        print(ligand + " is not a strict or auxiliary basis species. "
+              "Dissociation reactions of the complex will assume the "
+              "cation dissociates according to: " + ligand_dissrxn)
+    else:
+        ligand_dissrxn_dict = {ligand:1}
     
-    LIGAND = ligand_override
-    ZL, GL, HL, SL, CPL, VL = ligand_vals[0], ligand_vals[1], ligand_vals[2], ligand_vals[3], ligand_vals[4], ligand_vals[5]
+    # handle complex formula_ox
+    cation_formula_ox_dict = __get_formula_ox_dict(cation, df=thermo_data)
+    ligand_formula_ox_dict = __get_formula_ox_dict(ligand, df=thermo_data)
+    
+        
+    ZC = str(cation_entry["z.T"].values[0])
+    GC = str(cation_entry["G"].values[0])
+    HC = str(cation_entry["H"].values[0])
+    SC = str(cation_entry["S"].values[0])
+    CPC = str(cation_entry["Cp"].values[0])
+    VC = str(cation_entry["V"].values[0])
+        
+    if sigfigs:
+        GC_sf = find_sigfigs(GC)
+        HC_sf = find_sigfigs(HC)
+        SC_sf = find_sigfigs(SC)
+        CPC_sf = find_sigfigs(CPC)
+        VC_sf = find_sigfigs(VC)
+    else:
+        GC_sf = GC
+        HC_sf = HC
+        SC_sf = SC
+        CPC_sf = CPC
+        VC_sf = VC
+    
+    ZL = str(ligand_entry["z.T"].values[0])
+    GL = str(ligand_entry["G"].values[0])
+    HL = str(ligand_entry["H"].values[0])
+    SL = str(ligand_entry["S"].values[0])
+    CPL = str(ligand_entry["Cp"].values[0])
+    VL = str(ligand_entry["V"].values[0])
+        
+    GL_sf = find_sigfigs(GL)
+    HL_sf = find_sigfigs(HL)
+    SL_sf = find_sigfigs(SL)
+    CPL_sf = find_sigfigs(CPL)
+    VL_sf = find_sigfigs(VL)
+
+    ZC, GC, HC, SC, CPC, VC = int(float(ZC)), float(GC), float(HC), float(SC), float(CPC), float(VC)
     ZL, GL, HL, SL, CPL, VL = int(float(ZL)), float(GL), float(HL), float(SL), float(CPL), float(VL)
 
     # Calculations for the first complex
@@ -557,19 +767,10 @@ def complicate(cation_override, ligand_override, beta, sest, out_name,
 
     # The following section has been altered at GEOPIG so that there will be no output if Beta = 0.0
 
-    G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z1, G1, H1, S1, CP1, V1)
-
-    def sf(val, sf):
-        val = "{0:.{prec}g}".format(val, prec=sf)
-        if "e" in val and abs(float(val)) >= 1:
-            val = str(int(float(val)))
-        elif "e" not in val and abs(float(val)) < 1:
-            val = val + "0"*(sf - find_sigfigs(val))
-        elif "e" in val and abs(float(val)) < 1:
-            val = "{0:.{prec}f}".format(float(val), prec=20) # add arbitrarily high trailing zeros
-            val = re.sub("0+$", "", val) # trim off all trailing zeros
-            val = val + "0"*(sf - find_sigfigs(val)) # add back correct number of trailing zeros
-        return val
+    try:
+        G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z1, G1, H1, S1, CP1, V1)
+    except:
+        return
     
     if sigfigs:
         G_out = sf(G, min(GC_sf, GL_sf))
@@ -598,15 +799,24 @@ def complicate(cation_override, ligand_override, beta, sest, out_name,
         c2_out = round(c2/10000, rt)
         wcon_out = round(wcon/100000, rt)
     Z_out = Z1
-
-
-    write_output(filename=out_name, CATION=CATION, LIGAND=LIGAND, nth_complex=1, G=G_out, H=H_out, S=S_out,
+    
+    __write_output(filename=out_name, cation=cation, ligand=ligand, nth_complex=1, G=G_out, H=H_out, S=S_out,
                  CP=CP_out, V=V_out, a1=a1_out, a2=a2_out, a3=a3_out, a4=a4_out, c1=c1_out, c2=c2_out,
-                 wcon=wcon_out, Z=Z_out)
+                 wcon=wcon_out, Z=Z_out, azero=azero,
+                 cation_dissrxn_dict=cation_dissrxn_dict,
+                 ligand_dissrxn_dict=ligand_dissrxn_dict,
+                 data_path=data_path,
+                 cation_formula_ox_dict=cation_formula_ox_dict,
+                 ligand_formula_ox_dict=ligand_formula_ox_dict,
+                 append_to_data_path=append_to_data_path, replace=replace,
+                 skip_duplicates=skip_duplicates)
 
     if BETA2 != 0:
-
-        G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z2, G2, H2, S2, CP2, V2)
+        
+        try:
+            G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z2, G2, H2, S2, CP2, V2)
+        except:
+            return
         
         if sigfigs:
             G_out = sf(G, min(GC_sf, GL_sf))
@@ -636,17 +846,26 @@ def complicate(cation_override, ligand_override, beta, sest, out_name,
             wcon_out = round(wcon/100000, rt)
         Z_out = Z2
 
-        write_output(filename=out_name, CATION=CATION,
-                     LIGAND=LIGAND, nth_complex=2,
+        __write_output(filename=out_name, cation=cation,
+                     ligand=ligand, nth_complex=2,
                      G=G_out, H=H_out, S=S_out,
                      CP=CP_out, V=V_out, a1=a1_out,
                      a2=a2_out, a3=a3_out, a4=a4_out,
                      c1=c1_out, c2=c2_out,
-                     wcon=wcon_out, Z=Z_out)
+                     wcon=wcon_out, Z=Z_out, azero=azero,
+                     cation_dissrxn_dict=cation_dissrxn_dict,
+                     ligand_dissrxn_dict=ligand_dissrxn_dict,
+                     data_path=data_path,
+                     cation_formula_ox_dict=cation_formula_ox_dict,
+                     ligand_formula_ox_dict=ligand_formula_ox_dict,
+                     append_to_data_path=append_to_data_path, replace=replace,
+                     skip_duplicates=skip_duplicates)
 
     if BETA3 != 0:
-
-        G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z3, G3, H3, S3, CP3, V3)
+        try:
+            G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z3, G3, H3, S3, CP3, V3)
+        except:
+            return
     
         if sigfigs:
             G_out = sf(G, min(GC_sf, GL_sf))
@@ -677,17 +896,26 @@ def complicate(cation_override, ligand_override, beta, sest, out_name,
         Z_out = Z3
 
 
-        write_output(filename=out_name, CATION=CATION,
-                     LIGAND=LIGAND, nth_complex=3,
+        __write_output(filename=out_name, cation=cation,
+                     ligand=ligand, nth_complex=3,
                      G=G_out, H=H_out, S=S_out,
                      CP=CP_out, V=V_out, a1=a1_out,
                      a2=a2_out, a3=a3_out, a4=a4_out,
                      c1=c1_out, c2=c2_out,
-                     wcon=wcon_out, Z=Z_out)
+                     wcon=wcon_out, Z=Z_out, azero=azero,
+                     cation_dissrxn_dict=cation_dissrxn_dict,
+                     ligand_dissrxn_dict=ligand_dissrxn_dict,
+                     data_path=data_path,
+                     cation_formula_ox_dict=cation_formula_ox_dict,
+                     ligand_formula_ox_dict=ligand_formula_ox_dict,
+                     append_to_data_path=append_to_data_path, replace=replace,
+                     skip_duplicates=skip_duplicates)
 
     if BETA4 != 0:
-
-        G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z4, G4, H4, S4, CP4, V4)
+        try:
+            G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z4, G4, H4, S4, CP4, V4)
+        except:
+            return
         
         if sigfigs:
             G_out = sf(G, min(GC_sf, GL_sf))
@@ -717,12 +945,19 @@ def complicate(cation_override, ligand_override, beta, sest, out_name,
             wcon_out = round(wcon/100000, rt)
         Z_out = Z4
 
-        df = write_output(filename=out_name, CATION=CATION,
-                     LIGAND=LIGAND, nth_complex=4,
+        df = __write_output(filename=out_name, cation=cation,
+                     ligand=ligand, nth_complex=4,
                      G=G_out, H=H_out, S=S_out,
                      CP=CP_out, V=V_out, a1=a1_out,
                      a2=a2_out, a3=a3_out, a4=a4_out,
                      c1=c1_out, c2=c2_out,
-                     wcon=wcon_out, Z=Z_out)
+                     wcon=wcon_out, Z=Z_out, azero=azero,
+                     cation_dissrxn_dict=cation_dissrxn_dict,
+                     ligand_dissrxn_dict=ligand_dissrxn_dict,
+                     data_path=data_path,
+                     cation_formula_ox_dict=cation_formula_ox_dict,
+                     ligand_formula_ox_dict=ligand_formula_ox_dict,
+                     append_to_data_path=append_to_data_path, replace=replace,
+                     skip_duplicates=skip_duplicates)
         
         return df
