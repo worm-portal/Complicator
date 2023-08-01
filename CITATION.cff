@@ -15,7 +15,7 @@ cff-version: "0.0.1"
 license: MIT
 message: "If you use this software, please cite it using these metadata."
 repository-code: "https://github.com/worm-portal/Complicator"
-title: "AqEquil: Python package for aqueous geochemical speciation"
+title: "The Complicator (prototype)"
 version: "0.0.1"
 date-released: 2023-08-01
 ...
