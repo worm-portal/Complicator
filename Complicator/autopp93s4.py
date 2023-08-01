@@ -5,8 +5,8 @@ from datetime import datetime
 import pandas as pd
 import pkg_resources
 import decimal
-import shutil
 import warnings
+import math
 
 
 def sf(val, sf):
@@ -49,8 +49,8 @@ def __get_formula_ox_dict(name, df):
 def __write_output(filename, cation, ligand, nth_complex, G, H, S, CP, V,
                    a1, a2, a3, a4, c1, c2, wcon, Z, azero,
                    cation_dissrxn_dict, ligand_dissrxn_dict, data_path,
-                   cation_formula_ox_dict, ligand_formula_ox_dict,
-                   append_to_data_path, replace, skip_duplicates):
+                   cation_formula_ox_dict, ligand_formula_ox_dict, replace,
+                   skip_duplicates):
     """
     Write output to a CSV.
     """
@@ -142,55 +142,46 @@ def __write_output(filename, cation, ligand, nth_complex, G, H, S, CP, V,
         "category_2":[""],
     }
     df = pd.DataFrame(data)
+
+    file_exists = os.path.isfile(filename+'.csv')
     
-    if append_to_data_path:
-        shutil.copyfile(data_path, filename+'.csv')
-    
-    try:
-        file_exists = os.path.isfile(filename+'.csv')
-        if file_exists:
-            with open(filename+'.csv', 'a') as f:
+    if file_exists:
+        with open(filename+'.csv', 'a') as f:
 
-                f_df = pd.read_csv(filename+'.csv')
-                
-                
-                
-                # check that a monoligand complex without parentheses isn't already
-                # in the thermodynamic database. Warn or skip.
-                keep = True
-                complex_name_no_parentheses = complex_name.replace("(", "").replace(")", "")
-                if complex_name_no_parentheses in list(f_df["name"]):
-                    if skip_duplicates:
-                        keep = False
-                    else:
-                        msg = ("Warning: adding " + complex_name + " to "
-                            "" + filename + ".csv but a species called "
-                            "" + complex_name_no_parentheses + " is already present. "
-                            "Ensure this is not a duplicate before using the output "
-                            "from the Complicator. Set skip_duplicates=True "
-                            "and rerun to skip and exclude this complex.")
-                        warnings.warn(msg)
-                
-                if keep and replace and complex_name in list(f_df["name"]):
+            f_df = pd.read_csv(filename+'.csv')
 
-                    cols = list(f_df.columns) 
-                    f_df.iloc[f_df["name"]==complex_name, :] = df
+            # check that a monoligand complex without parentheses isn't already
+            # in the thermodynamic database. Warn or skip.
+            keep = True
+            complex_name_no_parentheses = complex_name.replace("(", "").replace(")", "")
 
-                    f_df.to_csv(filename+'.csv', header=True, index=False)
-
-                elif keep and complex_name not in list(f_df["name"]):
-                    df.to_csv(f, header=False, index=False)
+            if complex_name_no_parentheses in list(f_df["name"]):
+                if skip_duplicates:
+                    keep = False
                 else:
-                    pass
+                    msg = ("Warning: adding " + complex_name + " to "
+                        "" + filename + ".csv but a species called "
+                        "" + complex_name_no_parentheses + " is already present. "
+                        "Ensure this is not a duplicate before using the output "
+                        "from the Complicator. Set skip_duplicates=True "
+                        "and rerun to skip and exclude this complex.")
+                    warnings.warn(msg)
 
+            if keep and replace and complex_name in list(f_df["name"]):
+                cols = list(f_df.columns) 
+                f_df.iloc[f_df["name"]==complex_name, :] = df
 
+                f_df.to_csv(filename+'.csv', header=True, index=False)
 
-        else:
-            df.to_csv(filename+'.csv', index=False)
+            elif keep and complex_name not in list(f_df["name"]):
+                df.to_csv(f, header=False, index=False)
+                
+            else:
+                pass
+
+    else:
+        df.to_csv(filename+'.csv', index=False)
             
-    except:
-        warnings.warn("The file '" + filename + ".csv' could not be written! Make sure this is a valid filename.")
-    
     return df
 
 
@@ -262,7 +253,7 @@ def find_sigfigs(x):
 
 
 def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
-               sigfigs=False, data_path=None, append_to_data_path=True,
+               sigfigs=False, data_path=None,
                correct_basis=True, replace=False, skip_duplicates=False):
     
     """
@@ -305,10 +296,6 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     data_path : str, optional
         File path and name of a custom thermodynamic database CSV. If undefined,
         the default WORM database will be used.
-    
-    append_to_data_path : bool, default True
-        Append results to a copy of the thermodynamic database defined by
-        `data_path`?
     
     correct_basis : bool, default True
         If a cation or ligand is not a strict or auxiliary basis species in the
@@ -437,7 +424,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     # Now the entropy predictor starts for the first complex
 
     # if sest1 is available, use it. If not, predict it.
-    if sest1 != 0:
+    if not math.isnan(sest1):
         S1 = sest1
         DELSR1 = S1 - SC - SL
         DELS1 = DELSR1
@@ -470,7 +457,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     DELVR1  = 0.11419*VC + 8.9432
     V1 = DELVR1 + VC + VL
     Z1 = Z
-
+    
     # Calculations for the second complex
     Z = Z + ZL
 
@@ -478,7 +465,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     G2 = DELGR2 + GC + (2.0*GL)
 
     # if sest2 is available, use it. If not, predict it.
-    if sest2 != 0:
+    if not math.isnan(sest2):
         S2=sest2
         DELSR2 = S2 - SC - (2.0*SL)
         DELS2 = DELSR2 - DELS1
@@ -499,6 +486,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     Z2 = Z
 
     DELHR2 = DELGR2 + (298.15*DELSR2)
+    
     H2 = DELHR2 + HC + (2.0*HL)
 
     # CHANGED 17 MARCH 1992!!!
@@ -514,7 +502,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     DELVR2  = 0.11419*V1 + 8.9432
     V2 = DELVR2 + DELVR1 + VC + (2.0*VL)
     Z2 = Z
-
+    
     # Calculations for the third complex
 
     Z = Z + ZL  
@@ -522,7 +510,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     G3 = DELGR3 + GC + (3.0*GL)
 
     # if sest3 is available, use it. If not, predict it.
-    if sest3 != 0:
+    if not math.isnan(sest3):
         S3=sest3
         DELSR3 = S3 - SC - (3.0*SL)
         DELS3 = DELSR3 - DELS1 - DELS2
@@ -558,16 +546,15 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     DELVR3  = 0.11419*V2 + 8.9432
     V3 = DELVR3 + DELVR2 + DELVR1 + VC + (3.0*VL)
     Z3 = Z
-
+    
     # Calculations for the fourth complex
-
     Z = Z + ZL
 
     DELGR4 = 2.30259*1.98719*298.15*BETA4
     G4 = DELGR4 + GC + (4.0*GL)
 
     # if sest4 is available, use it. If not, predict it.
-    if sest4 != 0:
+    if not math.isnan(sest4):
         S4=sest4
         DELSR4 = S4 - SC - (4.0*SL)
         DELS4 = DELSR4 - DELS1 - DELS2 - DELS3
@@ -603,12 +590,12 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
     DELVR4  = 0.11419*V3 + 8.9432
     V4 = DELVR4 + DELVR3 + DELVR2 + DELVR1 + VC + (4.0*VL)
     Z4 = Z
-
+    
     # Now the partial molal properties are used in PARCOR to estimate equation of state coefficients for each complex.
 
     def calc_params(Z, G, H, S, CP, V):
         # The following are the Born functions at 25 C, and various other constants.
-
+        
         AK = 0.0
         RX = 0.0
         sigma = 0.0
@@ -643,32 +630,36 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
                 alphaz = 286
             else:
                 print("alphaz cannot be calculated!")
-                sys.exit(0)
-
-            if S != 0.0:
-                if RX != 0.0:
-                    RE = RX+R*gamma
+                return
+            
+            if not math.isnan(S):
+                if RX != 0:
+                   # GB: RX is always 0 because it's set to 0 at the start of the function? Why is this here?
+                    
+                    re = RX+R*gamma
                 else:
                     ra=(Z**2 *(eta * Y - 100.)/(S - alphaz))
                     ire=int(100.*ra +.5)
                     re=ire/100.
             else:
-                if RX != 0.0:
+                if RX != 0:
+                    # GB: RX is always 0 because it's set to 0 at the start of the function? Why is this here?
+                    # GB: also, 'rx' and 'z' aren't variables defined anywhere. Supposed to be capitalized?
                     re = rx+z*gamma
                     S =(z**2)*(eta*Y - 100.) / re + alphaz
                 else:
-                    print('IF Z NE 0.0, EITHER S OR RX MUST BE GIVEN!')
-                    sys.exit(0)
-
+                    print('IF Z IS 0.0, EITHER S OR RX MUST BE GIVEN!')
+                    return
 
             wabs = (eta*Z**2)/re
             wcon = wabs-Z*wabsh
+            
         else:
             if POLAR == 2:
                 wcon= -0.03*100000
                 iwcon = int(wcon + .5)
                 wcon = iwcon
-
+                
         # Calculation of solvation contributions to the standard partial molal properties
         vs=-wcon*Q*conv
         cps=wcon*tr*X
@@ -680,10 +671,10 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
         sn=S-ss
 
         # THE CORRELATIONS FOR E.O.S. PARAMETERS BEGIN !
-        if AK != 0.0:
+        if not math.isnan(AK):
             aks=wcon*xN*conv
             akn=AK-aks
-            if sigma != 0.0:
+            if not math.isnan(sigma):
                 a2=17.19E+4*akn+421.1
                 # rounding
                 ia2 = int(a2*100 + .5)
@@ -710,7 +701,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
                 ia1 = int(a1*100000 + .5)
                 a1 = ia1/100000
         else:
-            if sigma != 0.0:
+            if not math.isnan(sigma):
                 a1=1.3684E-2*vn+0.1765
                 # rounding
                 ia1 = int(a1*100000. + .5)
@@ -736,7 +727,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
                 # rounding
                 ia2 = int(a2*100 + .5)
                 a2 = ia2/100
-
+                
         a4 = -4.134*a2-27790.0
         # rounding
         ia4 = int(a4 +.5)
@@ -760,59 +751,58 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
         akn=(a2+a4/(tr-theta))*(1/pfunk**2)
         aks=wcon*conv*xN
         ak=akn+aks
-
+        
         return G, H, S, a1, a2, a3, a4, c1, c2, wcon
 
         # THAT'S ALL FOLKS !
 
     # The following section has been altered at GEOPIG so that there will be no output if Beta = 0.0
+    if not math.isnan(BETA1):
+        try:
+            G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z1, G1, H1, S1, CP1, V1)
+        except:
+            return
 
-    try:
-        G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z1, G1, H1, S1, CP1, V1)
-    except:
-        return
-    
-    if sigfigs:
-        G_out = sf(G, min(GC_sf, GL_sf))
-        H_out = sf(H, min(HC_sf, HL_sf))
-        S_out = sf(S, min(SC_sf, SL_sf))
-        CP_out = sf(CP1, min(CPC_sf, CPL_sf))
-        V_out = sf(V1, min(VC_sf, VL_sf))
-        a1_out = sf(a1*10, min(VC_sf, VL_sf))
-        a2_out = sf(a2/100, min(VC_sf, VL_sf))
-        a3_out = sf(a3, min(VC_sf, VL_sf))
-        a4_out = sf(a4/10000, min(VC_sf, VL_sf))
-        c1_out = sf(c1, min(CPC_sf, CPL_sf))
-        c2_out = sf(c2/10000, min(CPC_sf, CPL_sf))
-        wcon_out = sf(wcon/100000, min(SC_sf, SL_sf))
-    else:
-        G_out = round(G, rt)
-        H_out = round(H, rt)
-        S_out = round(S, rt)
-        CP_out = round(CP1, rt)
-        V_out = round(V1, rt)
-        a1_out = round(a1*10, rt)
-        a2_out = round(a2/100, rt)
-        a3_out = round(a3, rt)
-        a4_out = round(a4/10000, rt)
-        c1_out = round(c1, rt)
-        c2_out = round(c2/10000, rt)
-        wcon_out = round(wcon/100000, rt)
-    Z_out = Z1
-    
-    __write_output(filename=out_name, cation=cation, ligand=ligand, nth_complex=1, G=G_out, H=H_out, S=S_out,
-                 CP=CP_out, V=V_out, a1=a1_out, a2=a2_out, a3=a3_out, a4=a4_out, c1=c1_out, c2=c2_out,
-                 wcon=wcon_out, Z=Z_out, azero=azero,
-                 cation_dissrxn_dict=cation_dissrxn_dict,
-                 ligand_dissrxn_dict=ligand_dissrxn_dict,
-                 data_path=data_path,
-                 cation_formula_ox_dict=cation_formula_ox_dict,
-                 ligand_formula_ox_dict=ligand_formula_ox_dict,
-                 append_to_data_path=append_to_data_path, replace=replace,
-                 skip_duplicates=skip_duplicates)
+        if sigfigs:
+            G_out = sf(G, min(GC_sf, GL_sf))
+            H_out = sf(H, min(HC_sf, HL_sf))
+            S_out = sf(S, min(SC_sf, SL_sf))
+            CP_out = sf(CP1, min(CPC_sf, CPL_sf))
+            V_out = sf(V1, min(VC_sf, VL_sf))
+            a1_out = sf(a1*10, min(VC_sf, VL_sf))
+            a2_out = sf(a2/100, min(VC_sf, VL_sf))
+            a3_out = sf(a3, min(VC_sf, VL_sf))
+            a4_out = sf(a4/10000, min(VC_sf, VL_sf))
+            c1_out = sf(c1, min(CPC_sf, CPL_sf))
+            c2_out = sf(c2/10000, min(CPC_sf, CPL_sf))
+            wcon_out = sf(wcon/100000, min(SC_sf, SL_sf))
+        else:
+            G_out = round(G, rt)
+            H_out = round(H, rt)
+            S_out = round(S, rt)
+            CP_out = round(CP1, rt)
+            V_out = round(V1, rt)
+            a1_out = round(a1*10, rt)
+            a2_out = round(a2/100, rt)
+            a3_out = round(a3, rt)
+            a4_out = round(a4/10000, rt)
+            c1_out = round(c1, rt)
+            c2_out = round(c2/10000, rt)
+            wcon_out = round(wcon/100000, rt)
+        Z_out = Z1
 
-    if BETA2 != 0:
-        
+        __write_output(filename=out_name, cation=cation, ligand=ligand, nth_complex=1, G=G_out, H=H_out, S=S_out,
+                     CP=CP_out, V=V_out, a1=a1_out, a2=a2_out, a3=a3_out, a4=a4_out, c1=c1_out, c2=c2_out,
+                     wcon=wcon_out, Z=Z_out, azero=azero,
+                     cation_dissrxn_dict=cation_dissrxn_dict,
+                     ligand_dissrxn_dict=ligand_dissrxn_dict,
+                     data_path=data_path,
+                     cation_formula_ox_dict=cation_formula_ox_dict,
+                     ligand_formula_ox_dict=ligand_formula_ox_dict,
+                     replace=replace,
+                     skip_duplicates=skip_duplicates)
+
+    if not math.isnan(BETA2):
         try:
             G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z2, G2, H2, S2, CP2, V2)
         except:
@@ -845,23 +835,24 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
             c2_out = round(c2/10000, rt)
             wcon_out = round(wcon/100000, rt)
         Z_out = Z2
+        
+        if not math.isnan(G_out):
+            __write_output(filename=out_name, cation=cation,
+                         ligand=ligand, nth_complex=2,
+                         G=G_out, H=H_out, S=S_out,
+                         CP=CP_out, V=V_out, a1=a1_out,
+                         a2=a2_out, a3=a3_out, a4=a4_out,
+                         c1=c1_out, c2=c2_out,
+                         wcon=wcon_out, Z=Z_out, azero=azero,
+                         cation_dissrxn_dict=cation_dissrxn_dict,
+                         ligand_dissrxn_dict=ligand_dissrxn_dict,
+                         data_path=data_path,
+                         cation_formula_ox_dict=cation_formula_ox_dict,
+                         ligand_formula_ox_dict=ligand_formula_ox_dict,
+                         replace=replace,
+                         skip_duplicates=skip_duplicates)
 
-        __write_output(filename=out_name, cation=cation,
-                     ligand=ligand, nth_complex=2,
-                     G=G_out, H=H_out, S=S_out,
-                     CP=CP_out, V=V_out, a1=a1_out,
-                     a2=a2_out, a3=a3_out, a4=a4_out,
-                     c1=c1_out, c2=c2_out,
-                     wcon=wcon_out, Z=Z_out, azero=azero,
-                     cation_dissrxn_dict=cation_dissrxn_dict,
-                     ligand_dissrxn_dict=ligand_dissrxn_dict,
-                     data_path=data_path,
-                     cation_formula_ox_dict=cation_formula_ox_dict,
-                     ligand_formula_ox_dict=ligand_formula_ox_dict,
-                     append_to_data_path=append_to_data_path, replace=replace,
-                     skip_duplicates=skip_duplicates)
-
-    if BETA3 != 0:
+    if not math.isnan(BETA3):
         try:
             G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z3, G3, H3, S3, CP3, V3)
         except:
@@ -895,7 +886,6 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
             wcon_out = round(wcon/100000, rt)
         Z_out = Z3
 
-
         __write_output(filename=out_name, cation=cation,
                      ligand=ligand, nth_complex=3,
                      G=G_out, H=H_out, S=S_out,
@@ -908,10 +898,10 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
                      data_path=data_path,
                      cation_formula_ox_dict=cation_formula_ox_dict,
                      ligand_formula_ox_dict=ligand_formula_ox_dict,
-                     append_to_data_path=append_to_data_path, replace=replace,
+                     replace=replace,
                      skip_duplicates=skip_duplicates)
 
-    if BETA4 != 0:
+    if not math.isnan(BETA4):
         try:
             G, H, S, a1, a2, a3, a4, c1, c2, wcon = calc_params(Z4, G4, H4, S4, CP4, V4)
         except:
@@ -957,7 +947,7 @@ def complicate(cation, ligand, beta, sest, out_name, azero=4, rt=3,
                      data_path=data_path,
                      cation_formula_ox_dict=cation_formula_ox_dict,
                      ligand_formula_ox_dict=ligand_formula_ox_dict,
-                     append_to_data_path=append_to_data_path, replace=replace,
+                     replace=replace,
                      skip_duplicates=skip_duplicates)
         
         return df
