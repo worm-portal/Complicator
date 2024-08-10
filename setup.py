@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="Complicator",
-    version="0.0.1",
+    version="0.1.0",
     author="Grayson Boyer",
     author_email="gmboyer@asu.edu",
-    description="Estimate thermodynamic properties of aqueous inorganic complexes with monovalent ligands.",
+    description="Estimate thermodynamic properties of aqueous metal complexes with monovalent ligands.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     entry_points={},
@@ -19,9 +19,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.8',
-    install_requires=['pandas'],
+    install_requires=['pandas', 'WORMutils', 'chemparse'],
     include_package_data=True,
-    package_data={'': ['*.txt']},
+    package_data={'': ['*.txt', '*.csv']},
     zip_safe=False
 )
 
