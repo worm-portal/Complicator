@@ -1,0 +1,25 @@
+# Ignore everything:
+*
+
+# Include only these folders:
+!Complicator/
+!Complicator/*
+!Complicator/*/
+!html/
+!html/Complicator/
+!html/Complicator/*
+!html/Complicator/*/
+!README.md
+!CITATION.cff
+!LICENSE.txt
+!setup.py
+!.gitignore
+
+# Ignore pycache
+Complicator/__pycache__/*
+Complicator/__pycache__/
+Complicator/__pycache__
+.ipynb_checkpoints
+.ipynb_checkpoints/
+.ipynb_checkpoints/*
+__pycache__/

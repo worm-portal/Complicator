@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="Complicator",
-    version="0.1.0",
+    version="0.1.2",
     author="Grayson Boyer",
     author_email="gmboyer@asu.edu",
     description="Estimate thermodynamic properties of aqueous metal complexes with monovalent ligands.",
