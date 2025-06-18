@@ -3,7 +3,6 @@ import sys, os
 import re
 from datetime import datetime
 import pandas as pd
-import pkg_resources
 import decimal
 import math
 import chemparse
@@ -57,13 +56,13 @@ def __write_output(filename, cation, ligand, nth_complex, G, H, S, CP, V,
     """
 
     duplicate_list = []
-    cat_nocharge = re.sub("\+.*$", "", cation)
-    lig_nocharge = re.sub("\-.*$", "", ligand)
+    cat_nocharge = re.sub(r"\+.*$", "", cation)
+    lig_nocharge = re.sub(r"\-.*$", "", ligand)
 
     cat_formula = thermo_data[thermo_data["name"]==cation]["formula"].values[0]
     lig_formula = thermo_data[thermo_data["name"]==ligand]["formula"].values[0]
-    cat_formula_nocharge = re.sub("\+.*$", "", cat_formula)
-    lig_formula_nocharge = re.sub("\-.*$", "", lig_formula)
+    cat_formula_nocharge = re.sub(r"\+.*$", "", cat_formula)
+    lig_formula_nocharge = re.sub(r"\-.*$", "", lig_formula)
     
     if Z > 1:
         this_charge = "+" + str(Z)
@@ -684,14 +683,12 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
     df_out_4 = pd.DataFrame()
     
     if data_path == None:
-        thermo_data = pkg_resources.resource_stream(__name__, "wrm_data.csv")
-        thermo_data = pd.read_csv(thermo_data, dtype=object)
+        thermo_data = WORMutils.import_package_file(__name__, "wrm_data.csv")
     else:
         thermo_data = pd.read_csv(data_path)
 
     if ligand_abbrv_data_path == None:
-        ligand_abbrv = pkg_resources.resource_stream(__name__, "wrm_ligand_abbrv.csv")
-        ligand_abbrv = pd.read_csv(ligand_abbrv)
+        ligand_abbrv = WORMutils.import_package_file(__name__, "wrm_ligand_abbrv.csv")
     elif isinstance(ligand_abbrv_data_path, str):
         ligand_abbrv = pd.read_csv(ligand_abbrv_data_path)
         
