@@ -854,12 +854,18 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         Z = ZC + ZL
         Z1 = Z
         
-        DELGR1 = (2.30259)*(1.98719)*(298.15)*BETA1
-        G1 = DELGR1 + GC + GL
-        eqs_used.append("DELGR1 = {} cal/mol = (2.30259)*(1.98719)*(298.15)*BETA1, Gibbs free energy of association of the first complex".format("{0:.5g}".format(DELGR1)))
-        eqs_used.append("Standard Gibbs free energy of formation of the cation GC = {} cal/mol, and the ligand GL = {} cal/mol".format(GC, GL))
-        eqs_used.append("G1 = {} cal/mol = DELGR1 + GC + GL, standard state partial molal Gibbs free energy of formation of the first complex".format("{0:.5g}".format(G1)))
-    
+        if not math.isnan(G_1):
+            G1 = G_1
+            DELGR1 = -G1 + GC + GL
+            eqs_used.append("G1 = {} cal/mol, standard Gibbs free energy of formation of the first complex".format("{0:.5g}".format(G1)))
+            eqs_used.append("DELGR1 = {} cal/mol = -G1 + GC + GL, Gibbs free energy of association of the first complex".format("{0:.5g}".format(DELGR1)))
+        else:
+            DELGR1 = (2.30259)*(1.98719)*(298.15)*BETA1
+            G1 = DELGR1 + GC + GL
+            eqs_used.append("DELGR1 = {} cal/mol = (2.30259)*(1.98719)*(298.15)*BETA1, Gibbs free energy of association of the first complex".format("{0:.5g}".format(DELGR1)))
+            eqs_used.append("Standard Gibbs free energy of formation of the cation GC = {} cal/mol, and the ligand GL = {} cal/mol".format(GC, GL))
+            eqs_used.append("G1 = {} cal/mol = DELGR1 + GC + GL, standard state partial molal Gibbs free energy of formation of the first complex".format("{0:.5g}".format(G1)))
+ 
         # retrieve the cation's element (e.g., "Fe" for "Fe+2")
         cation_formula_dict = chemparse.parse_formula(cation_entry["formula"].values[0])
         cation_element = [k for k in cation_formula_dict.keys() if k != "+"][0]
@@ -933,11 +939,15 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
                 eqs_used.append("BETA = {} = BZ*(SL+(-5.0*ZL)) + BZP, Eqn pertaining to Sverjensky et al. 1997".format("{0:.5g}".format(BETA)))
                 eqs_used.append("DELS1 = {} = ALPHA*(SC+(-5.0*ZC)) + BETA, Eqn pertaining to Sverjensky et al. 1997".format("{0:.5g}".format(DELS1)))
                 eqs_used.append("DELSR1 = DELS1 = {} cal/mol/K = S1 - SC - SL, entropy of association of the first complex".format("{0:.5g}".format(DELS1)))
-        
-        DELHR1 = DELGR1 + (298.15*DELSR1)
-        H1 = DELHR1 + HC + (1.0*HL)
-        eqs_used.append("DELHR1 = {} cal/mol = DELGR1 + (298.15*DELSR1), enthalpy of the first association".format("{0:.5g}".format(DELHR1)))
-        eqs_used.append("H1 = {} cal/mol = DELHR1 + HC + (1.0*HL), standard enthalpy of the first complex".format("{0:.5g}".format(H1)))
+
+        if not math.isnan(H_1):
+            H1 = H_1
+            eqs_used.append("H1 = {} cal/mol, standard enthalpy of the first complex".format("{0:.5g}".format(H1)))
+        else:
+            DELHR1 = DELGR1 + (298.15*DELSR1)
+            H1 = DELHR1 + HC + (1.0*HL)
+            eqs_used.append("DELHR1 = {} cal/mol = DELGR1 + (298.15*DELSR1), enthalpy of the first association".format("{0:.5g}".format(DELHR1)))
+            eqs_used.append("H1 = {} cal/mol = DELHR1 + HC + (1.0*HL), standard enthalpy of the first complex".format("{0:.5g}".format(H1)))
 
         if not math.isnan(Cp_1):
             # if user provides a heat capacity
@@ -1033,11 +1043,18 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         eqs_used.append("Beginning calculations for the second complex...")
         Z = Z + ZL
         Z2 = Z
-    
-        DELGR2 = 2.30259*1.98719*298.15*BETA2
-        G2 = DELGR2 + GC + (2.0*GL)
-        eqs_used.append("DELGR2 = {} cal/mol = 2.30259*1.98719*298.15*BETA2, Gibbs free energy of association of the second complex".format("{0:.5g}".format(DELGR2)))
-        eqs_used.append("G2 = {} cal/mol = DELGR2 + GC + (2.0*GL), standard state partial molal Gibbs free energy of formation of the second complex".format("{0:.5g}".format(G2)))
+
+
+        if not math.isnan(G_2):
+            G2 = G_2
+            DELGR2 = -G2 + GC + (2.0*GL)
+            eqs_used.append("G2 = {} cal/mol, standard Gibbs free energy of formation of the second complex".format("{0:.5g}".format(G2)))
+            eqs_used.append("DELGR2 = {} cal/mol = -G2 + GC + (2.0*GL), Gibbs free energy of association of the second complex".format("{0:.5g}".format(DELGR2)))
+        else:
+            DELGR2 = 2.30259*1.98719*298.15*BETA2
+            G2 = DELGR2 + GC + (2.0*GL)
+            eqs_used.append("DELGR2 = {} cal/mol = 2.30259*1.98719*298.15*BETA2, Gibbs free energy of association of the second complex".format("{0:.5g}".format(DELGR2)))
+            eqs_used.append("G2 = {} cal/mol = DELGR2 + GC + (2.0*GL), standard state partial molal Gibbs free energy of formation of the second complex".format("{0:.5g}".format(G2)))
     
         if ligand == "OH-":
             # subtract the Gibbs free energy of 1 water
@@ -1106,11 +1123,15 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
                 eqs_used.append("DELS2 = {} cal/mol/K = ALPHA*(S1+(-5.0*(ZC+ZL))) + BETA, Eqn pertaining to Sverjensky et al. 1997".format("{0:.5g}".format(DELS2)))
                 eqs_used.append("DELSR2 = {} cal/mol/K = DELS1 + DELS2, entropy of association for the second complex (cal/mol/K)".format("{0:.5g}".format(DELSR2)))
                 eqs_used.append("S2 = {} cal/mol/K = DELSR2 + SC + (2.0*SL), standard third law entropy of the second complex".format("{0:.5g}".format(S2)))
-    
-        DELHR2 = DELGR2 + (298.15*DELSR2)
-        H2 = DELHR2 + HC + (2.0*HL)
-        eqs_used.append("DELHR2 = {} cal/mol = DELGR2 + (298.15*DELSR2), enthalpy of the second association".format("{0:.5g}".format(DELHR2)))
-        eqs_used.append("H2 = {} cal/mol = DELHR2 + HC + (2.0*HL), standard enthalpy of the second complex".format("{0:.5g}".format(H2)))
+
+        if not math.isnan(H_2):
+            H2 = H_2
+            eqs_used.append("H2 = {} cal/mol, standard enthalpy of the second complex".format("{0:.5g}".format(H2)))
+        else:
+            DELHR2 = DELGR2 + (298.15*DELSR2)
+            H2 = DELHR2 + HC + (2.0*HL)
+            eqs_used.append("DELHR2 = {} cal/mol = DELGR2 + (298.15*DELSR2), enthalpy of the second association".format("{0:.5g}".format(DELHR2)))
+            eqs_used.append("H2 = {} cal/mol = DELHR2 + HC + (2.0*HL), standard enthalpy of the second complex".format("{0:.5g}".format(H2)))
         
         if ligand == "OH-":
             H2 = H2 - H_water_298K
@@ -1121,7 +1142,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
             CP2 = Cp_2
             DELCP2 = CP2 - CPC - CPL
             eqs_used.append("Isobaric heat capacity of the complex CP2 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_2, CPC, CPL))
-            eqs_used.append("DELCP2 = {} cal/mol/K = CP2 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP2)))
+            eqs_used.append("DELCP2 = {} cal/mol/K = CP2 - CPC - CPL, heat capacity of association of the second complex".format("{0:.5g}".format(DELCP2)))
         else:
             if ligand == "OH-":
                 if ZC in [1, 2]:
@@ -1162,7 +1183,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
             V2 = V_2
             DELVR2 = V2 - VC - VL
             eqs_used.append("Volume of the complex V2 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V2, VC, VL))
-            eqs_used.append("DELVR2 = {} cm3/mol = V2 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR2)))
+            eqs_used.append("DELVR2 = {} cm3/mol = V2 - VC - VL, volume of association of the second complex".format("{0:.5g}".format(DELVR2)))
         else:
             if ligand == "OH-":
                 if ZC == 1:
@@ -1206,10 +1227,16 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         Z = Z + ZL
         Z3 = Z
         
-        DELGR3 = 2.30259*1.98719*298.15*BETA3
-        G3 = DELGR3 + GC + (3.0*GL)
-        eqs_used.append("DELGR3 = {} cal/mol = 2.30259*1.98719*298.15*BETA3, Gibbs free energy of association of the third complex".format("{0:.5g}".format(DELGR3)))
-        eqs_used.append("G3 = {} cal/mol = DELGR3 + GC + (3.0*GL), standard state partial molal Gibbs free energy of formation of the third complex".format("{0:.5g}".format(G3)))
+        if not math.isnan(G_3):
+            G3 = G_3
+            DELGR3 = -G3 + GC + (3.0*GL)
+            eqs_used.append("G3 = {} cal/mol, standard Gibbs free energy of formation of the third complex".format("{0:.5g}".format(G3)))
+            eqs_used.append("DELGR3 = {} cal/mol = -G3 + GC + (3.0*GL), Gibbs free energy of association of the third complex".format("{0:.5g}".format(DELGR3)))
+        else:
+            DELGR3 = 2.30259*1.98719*298.15*BETA3
+            G3 = DELGR3 + GC + (3.0*GL)
+            eqs_used.append("DELGR3 = {} cal/mol = 2.30259*1.98719*298.15*BETA3, Gibbs free energy of association of the third complex".format("{0:.5g}".format(DELGR3)))
+            eqs_used.append("G3 = {} cal/mol = DELGR3 + GC + (3.0*GL), standard state partial molal Gibbs free energy of formation of the third complex".format("{0:.5g}".format(G3)))
     
         if ligand == "OH-":
             G3 = G3 - G_water_298K
@@ -1282,12 +1309,16 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
                 eqs_used.append("DELS3 = {} cal/mol/K = ALPHA*(S2+(-5.0*(ZC+(2*ZL)))) + BETA, Eqn pertaining to Sverjensky et al. 1997".format("{0:.5g}".format(DELS3)))
                 eqs_used.append("DELSR3 = {} cal/mol/K = DELS1 + DELS2 + DELS3, entropy of association for the third complex (cal/mol/K)".format("{0:.5g}".format(DELSR3)))
                 eqs_used.append("S3 = {} cal/mol/K = DELSR2 + SC + (2.0*SL), standard third law entropy of the third complex".format("{0:.5g}".format(S3)))
-    
-        DELHR3 = DELGR3 + (298.15*DELSR3)
-        H3 = DELHR3 + HC + (3.0*HL)
-        eqs_used.append("DELHR3 = {} cal/mol = DELGR3 + (298.15*DELSR3), enthalpy of the third association".format("{0:.5g}".format(DELHR3)))
-        eqs_used.append("H3 = {} cal/mol = DELHR3 + HC + (3.0*HL), standard enthalpy of the third complex".format("{0:.5g}".format(H3)))
-    
+
+        if not math.isnan(H_3):
+            H3 = H_3
+            eqs_used.append("H3 = {} cal/mol, standard enthalpy of the third complex".format("{0:.5g}".format(H3)))
+        else:
+            DELHR3 = DELGR3 + (298.15*DELSR3)
+            H3 = DELHR3 + HC + (3.0*HL)
+            eqs_used.append("DELHR3 = {} cal/mol = DELGR3 + (298.15*DELSR3), enthalpy of the third association".format("{0:.5g}".format(DELHR3)))
+            eqs_used.append("H3 = {} cal/mol = DELHR3 + HC + (3.0*HL), standard enthalpy of the third complex".format("{0:.5g}".format(H3)))
+        
         if ligand == "OH-":
             H3 = H3 - H_water_298K
             eqs_used.append("H3 = {} cal/mol = H3 + H_water_298K, subtract the standard enthalpy of H2O at 298.15K as per the convention outlined in Shock et al., 1997".format("{0:.5g}".format(H3)))
@@ -1297,7 +1328,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
             CP3 = Cp_3
             DELCP3 = CP3 - CPC - CPL
             eqs_used.append("Isobaric heat capacity of the complex CP3 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_3, CPC, CPL))
-            eqs_used.append("DELCP3 = {} cal/mol/K = CP3 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP3)))
+            eqs_used.append("DELCP3 = {} cal/mol/K = CP3 - CPC - CPL, heat capacity of association of the third complex".format("{0:.5g}".format(DELCP3)))
         else:
             if ligand == "OH-":
                 if ZC == 1:
@@ -1338,7 +1369,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
             V3 = V_3
             DELVR3 = V3 - VC - VL
             eqs_used.append("Volume of the complex V3 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V3, VC, VL))
-            eqs_used.append("DELVR3 = {} cm3/mol = V3 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR3)))
+            eqs_used.append("DELVR3 = {} cm3/mol = V3 - VC - VL, volume of association of the third complex".format("{0:.5g}".format(DELVR3)))
         else:
             if ligand == "OH-":
                 if ZC == 1:
@@ -1380,11 +1411,17 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         eqs_used.append("Beginning calculations for the fourth complex...")
         Z = Z + ZL
         Z4 = Z
-    
-        DELGR4 = 2.30259*1.98719*298.15*BETA4
-        G4 = DELGR4 + GC + (4.0*GL)
-        eqs_used.append("DELGR4 = {} cal/mol = 2.30259*1.98719*298.15*BETA4, Gibbs free energy of association of the fourth complex".format("{0:.5g}".format(DELGR4)))
-        eqs_used.append("G4 = {} cal/mol = DELGR4 + GC + (4.0*GL), standard state partial molal Gibbs free energy of formation of the fourth complex".format("{0:.5g}".format(G4)))
+
+        if not math.isnan(G_4):
+            G4 = G_4
+            DELGR4 = -G4 + GC + (4.0*GL)
+            eqs_used.append("G4 = {} cal/mol, standard Gibbs free energy of formation of the fourth complex".format("{0:.5g}".format(G4)))
+            eqs_used.append("DELGR4 = {} cal/mol = -G4 + GC + (4.0*GL), Gibbs free energy of association of the fourth complex".format("{0:.5g}".format(DELGR4)))
+        else:
+            DELGR4 = 2.30259*1.98719*298.15*BETA4
+            G4 = DELGR4 + GC + (4.0*GL)
+            eqs_used.append("DELGR4 = {} cal/mol = 2.30259*1.98719*298.15*BETA4, Gibbs free energy of association of the fourth complex".format("{0:.5g}".format(DELGR4)))
+            eqs_used.append("G4 = {} cal/mol = DELGR4 + GC + (4.0*GL), standard state partial molal Gibbs free energy of formation of the fourth complex".format("{0:.5g}".format(G4)))
     
         if ligand == "OH-":
             G4 = G4 - 2*G_water_298K
@@ -1457,12 +1494,16 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
                 eqs_used.append("DELS4 = {} cal/mol/K = ALPHA*(S3+(-5.0*(ZC+(3*ZL)))) + BETA, Eqn pertaining to Sverjensky et al. 1997".format("{0:.5g}".format(DELS4)))
                 eqs_used.append("DELSR4 = {} cal/mol/K = DELS1 + DELS2 + DELS3 + DELS4, entropy of association for the fourth complex (cal/mol/K)".format("{0:.5g}".format(DELSR4)))
                 eqs_used.append("S2 = {} cal/mol/K = DELSR2 + SC + (2.0*SL), standard third law entropy of the fourth complex".format("{0:.5g}".format(S4)))
-    
-        DELHR4 = DELGR4 + (298.15*DELSR4)
-        H4 = DELHR4 + HC + (4.0*HL)
-        eqs_used.append("DELHR4 = {} cal/mol = DELGR4 + (298.15*DELSR4), enthalpy of the fourth association".format("{0:.5g}".format(DELHR4)))
-        eqs_used.append("H4 = {} cal/mol = DELHR4 + HC + (4.0*HL), standard enthalpy of the fourth complex".format("{0:.5g}".format(H4)))
-    
+
+        if not math.isnan(H_4):
+            H4 = H_4
+            eqs_used.append("H4 = {} cal/mol, standard enthalpy of the fourth complex".format("{0:.5g}".format(H4)))
+        else:
+            DELHR4 = DELGR4 + (298.15*DELSR4)
+            H4 = DELHR4 + HC + (4.0*HL)
+            eqs_used.append("DELHR4 = {} cal/mol = DELGR4 + (298.15*DELSR4), enthalpy of the fourth association".format("{0:.5g}".format(DELHR4)))
+            eqs_used.append("H4 = {} cal/mol = DELHR4 + HC + (4.0*HL), standard enthalpy of the fourth complex".format("{0:.5g}".format(H4)))
+        
         if ligand == "OH-":
             H4 = H4 - 2*H_water_298K
             eqs_used.append("H4 = {} cal/mol = H4 - 2*H_water_298K, subtract the standard enthalpy of two H2O at 298.15K as per the convention outlined in Shock et al., 1997".format("{0:.5g}".format(H4)))
@@ -1472,7 +1513,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
             CP4 = Cp_4
             DELCP4 = CP4 - CPC - CPL
             eqs_used.append("Isobaric heat capacity of the complex CP4 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_4, CPC, CPL))
-            eqs_used.append("DELCP4 = {} cal/mol/K = CP4 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP4)))
+            eqs_used.append("DELCP4 = {} cal/mol/K = CP4 - CPC - CPL, heat capacity of association of the fourth complex".format("{0:.5g}".format(DELCP4)))
         else:
             if ligand == "OH-":
                 if ZC == 1:
@@ -1516,7 +1557,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
             V4 = V_4
             DELVR4 = V4 - VC - VL
             eqs_used.append("Volume of the complex V4 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V4, VC, VL))
-            eqs_used.append("DELVR4 = {} cm3/mol = V4 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR4)))
+            eqs_used.append("DELVR4 = {} cm3/mol = V4 - VC - VL, volume of association of the fourth complex".format("{0:.5g}".format(DELVR4)))
         else:
             if ligand == "OH-":
                 if ZC == 1:
