@@ -681,7 +681,7 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
     df_out_2 = pd.DataFrame()
     df_out_3 = pd.DataFrame()
     df_out_4 = pd.DataFrame()
-    
+
     if data_path == None:
         thermo_data = WORMutils.import_package_file(__name__, "wrm_data.csv")
     else:
@@ -938,81 +938,95 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         H1 = DELHR1 + HC + (1.0*HL)
         eqs_used.append("DELHR1 = {} cal/mol = DELGR1 + (298.15*DELSR1), enthalpy of the first association".format("{0:.5g}".format(DELHR1)))
         eqs_used.append("H1 = {} cal/mol = DELHR1 + HC + (1.0*HL), standard enthalpy of the first complex".format("{0:.5g}".format(H1)))
-    
-        if ligand == "OH-":
-            if ZC in [1, 2]:
-                CP1 = -1.14*S1 + 9
-                eqs_used.append("CP1 = {} cal/mol/K = -1.14*S1 + 9, Eqn for monovalent and divalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP1)))
-            elif ZC in [3, 4]:
-                CP1 = -1.14*S1 - 37.2
-                eqs_used.append("CP1 = {} cal/mol/K = -1.14*S1 - 37.2, Eqn for trivalent and tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP1)))
-            else:
-                # cations with >4 charge have been weeded out in entropy calculation already
-                CP1 = float('NaN')
-            DELCP1 = CP1 - CPC - CPL
-        elif metal_organic_complex:
-            DELCP1 = 80 # Prapaipong and Shock 2001
-            CP1 = DELCP1 + CPC + CPL
-            eqs_used.append("DELCP1 = {} cal/mol/K = 80, assumption for metal organic complexes made in Prapaipong and Shock 2001".format("{0:.5g}".format(DELCP1)))
-            eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
-        else:
-            if SSH97_cp_eqns and ligand == "Cl-":
-                # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
-                DELCP1 = 1.25*CPC + 45.3*(Z1+1) - 27.3
-                CP1 = DELCP1 + CPC + CPL
-                eqs_used.append("DELCP1 = {} cal/mol/K = 1.25*CPC + 45.3*(Z1+1) - 27.3, Eqn 53 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP1)))
-                eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
-            elif SSH97_cp_eqns and ligand =="acetate" and ZC == 2:
-                # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
-                DELCP1 = 1.25*CPC + +93.8
-                CP1 = DELCP1 + CPC + CPL
-                eqs_used.append("DELCP1 = {} cal/mol/K = 1.25*CPC + 93.8, Eqn 54 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP1)))
-                eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
-            else:
-                # ES notes from original fortran code: Here the Cp predictor starts for the first complex.
-                # Modified 8 Aug 1992 after latest revision Modified 17 March 1992 to
-                # incorporate changes from last July 1991
-                dz = 0.856*CPL - 2.1 + 45.3*ZC
-                DELCP1 = 1.25*CPC + dz
-                CP1 = DELCP1 + CPC + CPL
-                eqs_used.append("dz = {} = 0.856*CPL - 2.1 + 45.3*ZC, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(dz)))
-                eqs_used.append("DELCP1 = {} cal/mol/K = 1.25*CPC + dz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP1)))
-                eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
-    
-        use_sverjensky_V_methods = True
-        if ligand == "OH-":
-            use_sverjensky_V_methods = False
-            if ZC == 1:
-                use_sverjensky_V_methods = True
-            elif ZC == 2:
-                if cation_element in transition_metals:
-                    V1 = 0.45*S1 - 12
-                    eqs_used.append("V1 = {} cm3/mol = 0.45*S1 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
-                elif cation_element in alkaline_earths:
-                    V1 = 0.16*S1 + 4.9
-                    eqs_used.append("V1 = {} cm3/mol = 0.16*S1 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
-                else:
-                    V1 = float('NaN')
-            elif Z == 3:
-                if cation_element in first_row_transition_metals:
-                    V1 = 0.45*S1 - 12
-                    eqs_used.append("V1 = {} cm3/mol = 0.45*S1 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
-                else:
-                    V1 = 0.16*S1 + 4.9
-                    eqs_used.append("V1 = {} cm3/mol = 0.16*S1 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
-            elif Z == 4:
-                V1 = 0.16*S1 + 4.9
-                eqs_used.append("V1 = {} cm3/mol = 0.16*S1 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
-            else:
-                # this cation element is not supported by existing methods
-                V1 = float("NaN")
 
-        if ligand != "OH-" or use_sverjensky_V_methods:
-            # Here the Volume predictor starts for the first complex
-            DELVR1  = 0.11419*VC + 8.9432 # Eq. 62 in Sverjensky et al 1997
-            V1 = DELVR1 + VC + VL
-            eqs_used.append("DELVR1 = {} cm3/mol = 0.11419*VC + 8.9432, Eq. 62 in Sverjensky et al., 1997".format("{0:.5g}".format(DELVR1)))
-            eqs_used.append("V1 = {} cm3/mol = DELVR1 + VC + VL, standard volume of the first complex".format("{0:.5g}".format(V1)))
+        if not math.isnan(Cp_1):
+            # if user provides a heat capacity
+            CP1 = Cp_1
+            DELCP1 = CP1 - CPC - CPL
+            eqs_used.append("Isobaric heat capacity of the complex CP1 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_1, CPC, CPL))
+            eqs_used.append("DELCP1 = {} cal/mol/K = CP1 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP1)))
+        else:
+            if ligand == "OH-":
+                if ZC in [1, 2]:
+                    CP1 = -1.14*S1 + 9
+                    eqs_used.append("CP1 = {} cal/mol/K = -1.14*S1 + 9, Eqn for monovalent and divalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP1)))
+                elif ZC in [3, 4]:
+                    CP1 = -1.14*S1 - 37.2
+                    eqs_used.append("CP1 = {} cal/mol/K = -1.14*S1 - 37.2, Eqn for trivalent and tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP1)))
+                else:
+                    # cations with >4 charge have been weeded out in entropy calculation already
+                    CP1 = float('NaN')
+                DELCP1 = CP1 - CPC - CPL
+            elif metal_organic_complex:
+                DELCP1 = 80 # Prapaipong and Shock 2001
+                CP1 = DELCP1 + CPC + CPL
+                eqs_used.append("DELCP1 = {} cal/mol/K = 80, assumption for metal organic complexes made in Prapaipong and Shock 2001".format("{0:.5g}".format(DELCP1)))
+                eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
+            else:
+                if SSH97_cp_eqns and ligand == "Cl-":
+                    # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
+                    DELCP1 = 1.25*CPC + 45.3*(Z1+1) - 27.3
+                    CP1 = DELCP1 + CPC + CPL
+                    eqs_used.append("DELCP1 = {} cal/mol/K = 1.25*CPC + 45.3*(Z1+1) - 27.3, Eqn 53 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP1)))
+                    eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
+                elif SSH97_cp_eqns and ligand =="acetate" and ZC == 2:
+                    # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
+                    DELCP1 = 1.25*CPC + +93.8
+                    CP1 = DELCP1 + CPC + CPL
+                    eqs_used.append("DELCP1 = {} cal/mol/K = 1.25*CPC + 93.8, Eqn 54 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP1)))
+                    eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
+                else:
+                    # ES notes from original fortran code: Here the Cp predictor starts for the first complex.
+                    # Modified 8 Aug 1992 after latest revision Modified 17 March 1992 to
+                    # incorporate changes from last July 1991
+                    dz = 0.856*CPL - 2.1 + 45.3*ZC
+                    DELCP1 = 1.25*CPC + dz
+                    CP1 = DELCP1 + CPC + CPL
+                    eqs_used.append("dz = {} = 0.856*CPL - 2.1 + 45.3*ZC, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(dz)))
+                    eqs_used.append("DELCP1 = {} cal/mol/K = 1.25*CPC + dz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP1)))
+                    eqs_used.append("CP1 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the first complex".format("{0:.5g}".format(CP1)))
+
+        if not math.isnan(V_1):
+            # if user provides a volume
+            V1 = V_1
+            DELVR1 = V1 - VC - VL
+            eqs_used.append("Volume of the complex V1 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V1, VC, VL))
+            eqs_used.append("DELVR1 = {} cm3/mol = V1 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR1)))
+        else:
+            use_sverjensky_V_methods = True
+            if ligand == "OH-":
+                use_sverjensky_V_methods = False
+                if ZC == 1:
+                    use_sverjensky_V_methods = True
+                elif ZC == 2:
+                    if cation_element in transition_metals:
+                        V1 = 0.45*S1 - 12
+                        eqs_used.append("V1 = {} cm3/mol = 0.45*S1 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
+                    elif cation_element in alkaline_earths:
+                        V1 = 0.16*S1 + 4.9
+                        eqs_used.append("V1 = {} cm3/mol = 0.16*S1 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
+                    else:
+                        V1 = float('NaN')
+                elif Z == 3:
+                    if cation_element in first_row_transition_metals:
+                        V1 = 0.45*S1 - 12
+                        eqs_used.append("V1 = {} cm3/mol = 0.45*S1 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
+                    else:
+                        V1 = 0.16*S1 + 4.9
+                        eqs_used.append("V1 = {} cm3/mol = 0.16*S1 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
+                elif Z == 4:
+                    V1 = 0.16*S1 + 4.9
+                    eqs_used.append("V1 = {} cm3/mol = 0.16*S1 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V1)))
+                else:
+                    # this cation element is not supported by existing methods
+                    V1 = float("NaN")
+    
+            if ligand != "OH-" or use_sverjensky_V_methods:
+                # Here the Volume predictor starts for the first complex
+                DELVR1  = 0.11419*VC + 8.9432 # Eq. 62 in Sverjensky et al 1997
+                V1 = DELVR1 + VC + VL
+                eqs_used.append("DELVR1 = {} cm3/mol = 0.11419*VC + 8.9432, Eq. 62 in Sverjensky et al., 1997".format("{0:.5g}".format(DELVR1)))
+                eqs_used.append("V1 = {} cm3/mol = DELVR1 + VC + VL, standard volume of the first complex".format("{0:.5g}".format(V1)))
 
     if not math.isnan(BETA2):
         ###### Calculations for the second complex
@@ -1101,77 +1115,90 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         if ligand == "OH-":
             H2 = H2 - H_water_298K
             eqs_used.append("H2 = {} cal/mol = H2 - H_water_298K, subtract the standard enthalpy of H2O at 298.15K as per the convention outlined in Shock et al., 1997".format("{0:.5g}".format(G2)))
-    
-        if ligand == "OH-":
-            if ZC in [1, 2]:
-                CP2 = -1.14*S2 - 15.5
-                eqs_used.append("CP2 = {} cal/mol/K = -1.14*S2 - 15.5, Eqn for monovalent and divalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP2)))
-            elif ZC in [3, 4]:
-                CP2 = -1.14*S2 - 60.8
-                eqs_used.append("CP1 = {} cal/mol/K = -1.14*S2 - 60.8, Eqn for trivalent and tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP2)))
-            else:
-                # cations with >4 charge have been weeded out in entropy calculation already
-                CP2 = float('NaN')
-            DELCPR2 = CP2 - CPC - (2.0*CPL)
-            DELCP2 = DELCPR2 - DELCP1
-        else:
-            if SSH97_cp_eqns and ligand == "Cl-":
-                # GB added 2024: Cp equations as they appear in Sverjensky et al., 1997
-                DELCP2 = (0.89*CPC - 4.9)*1 + DELCP1
-                CP2 = DELCP2 + CP1 + CPL
-                eqs_used.append("DELCP2 = {} cal/mol/K = (0.89*CPC - 4.9)*1 + DELCP1, Eqn 58 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP2)))
-                eqs_used.append("CP2 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP2)))
-            elif SSH97_cp_eqns and ligand == "acetate" and ZC == 2:
-                # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
-                DELCP2 = (0.89*CPC + 20.6)*1 + DELCP1
-                CP2 = DELCP2 + CP1 + CPL
-                eqs_used.append("DELCP2 = {} cal/mol/K = (0.89*CPC + 20.6)*1 + DELCP1, Eqn 59 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP2)))
-                eqs_used.append("CP2 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP2)))
-            else:
-                # ES note from original fortran code: CHANGED 17 MARCH 1992!!!
-                gz = 0.89*CPC + 0.72*CPL + 16.3
-                DELCP2 = DELCP1 + gz
-                CP2 = DELCP2 + CP1 + CPL
-                eqs_used.append("gz = {} = 0.89*CPC + 0.72*CPL + 16.3, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(gz)))
-                eqs_used.append("DELCP2 = {} cal/mol/K = DELCP1 + gz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP2)))
-                eqs_used.append("CP2 = {} cal/mol/K = DELCP2 + CPC + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP2)))
-            
-    
-        if ligand == "OH-":
-            if ZC == 1:
-                V2 = 0.45*S2 - 12
-                eqs_used.append("V2 = {} cm3/mol = 0.45*S2 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
-            elif ZC == 2:
-                if cation_element in transition_metals:
-                    V2 = 0.45*S2 - 12
-                    eqs_used.append("V2 = {} cm3/mol = 0.45*S2 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
-                elif cation_element in alkaline_earths:
-                    V2 = 0.16*S2 + 4.9
-                    eqs_used.append("V2 = {} cm3/mol = 0.16*S2 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
-                else:
-                    # cation element is not supported
-                    V2 = float('NaN')
-            elif ZC == 3:
-                if cation_element in first_row_transition_metals:
-                    V2 = 0.45*S2 - 12
-                    eqs_used.append("V2 = {} cm3/mol = 0.45*S2 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
-                else:
-                    V2 = 0.16*S2 + 4.9
-                    eqs_used.append("V2 = {} cm3/mol = 0.16*S2 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
-            elif ZC == 4:
-                V2 = 0.16*S2 + 4.9
-                eqs_used.append("V2 = {} cm3/mol = 0.16*S2 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
-            else:
-                # cations with 5+ charge are not supported
-                V2 = float("NaN")
-            
-            DELVR2 = V2 - VC - (2.0*VL) + V_water_298K
         
+        if not math.isnan(Cp_2):
+            # if user provides a heat capacity
+            CP2 = Cp_2
+            DELCP2 = CP2 - CPC - CPL
+            eqs_used.append("Isobaric heat capacity of the complex CP2 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_2, CPC, CPL))
+            eqs_used.append("DELCP2 = {} cal/mol/K = CP2 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP2)))
         else:
-            DELVR2  = 0.11419*V1 + 8.9432 # Eq. 62 in Sverjensky et al 1997
-            V2 = DELVR2 + DELVR1 + VC + (2.0*VL)
-            eqs_used.append("DELVR2 = {} cm3/mol = 0.11419*V1 + 8.9432, Eq. 62 in Sverjensky et al 1997".format("{0:.5g}".format(DELVR2)))
-            eqs_used.append("V2 = {} cm3/mol = DELVR2 + DELVR1 + VC + (2.0*VL), standard volume of the second complex".format("{0:.5g}".format(V2)))
+            if ligand == "OH-":
+                if ZC in [1, 2]:
+                    CP2 = -1.14*S2 - 15.5
+                    eqs_used.append("CP2 = {} cal/mol/K = -1.14*S2 - 15.5, Eqn for monovalent and divalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP2)))
+                elif ZC in [3, 4]:
+                    CP2 = -1.14*S2 - 60.8
+                    eqs_used.append("CP1 = {} cal/mol/K = -1.14*S2 - 60.8, Eqn for trivalent and tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP2)))
+                else:
+                    # cations with >4 charge have been weeded out in entropy calculation already
+                    CP2 = float('NaN')
+                DELCPR2 = CP2 - CPC - (2.0*CPL)
+                DELCP2 = DELCPR2 - DELCP1
+            else:
+                if SSH97_cp_eqns and ligand == "Cl-":
+                    # GB added 2024: Cp equations as they appear in Sverjensky et al., 1997
+                    DELCP2 = (0.89*CPC - 4.9)*1 + DELCP1
+                    CP2 = DELCP2 + CP1 + CPL
+                    eqs_used.append("DELCP2 = {} cal/mol/K = (0.89*CPC - 4.9)*1 + DELCP1, Eqn 58 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP2)))
+                    eqs_used.append("CP2 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP2)))
+                elif SSH97_cp_eqns and ligand == "acetate" and ZC == 2:
+                    # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
+                    DELCP2 = (0.89*CPC + 20.6)*1 + DELCP1
+                    CP2 = DELCP2 + CP1 + CPL
+                    eqs_used.append("DELCP2 = {} cal/mol/K = (0.89*CPC + 20.6)*1 + DELCP1, Eqn 59 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP2)))
+                    eqs_used.append("CP2 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP2)))
+                else:
+                    # ES note from original fortran code: CHANGED 17 MARCH 1992!!!
+                    gz = 0.89*CPC + 0.72*CPL + 16.3
+                    DELCP2 = DELCP1 + gz
+                    CP2 = DELCP2 + CP1 + CPL
+                    eqs_used.append("gz = {} = 0.89*CPC + 0.72*CPL + 16.3, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(gz)))
+                    eqs_used.append("DELCP2 = {} cal/mol/K = DELCP1 + gz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP2)))
+                    eqs_used.append("CP2 = {} cal/mol/K = DELCP2 + CPC + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP2)))
+                
+        if not math.isnan(V_2):
+            # if user provides a volume
+            V2 = V_2
+            DELVR2 = V2 - VC - VL
+            eqs_used.append("Volume of the complex V2 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V2, VC, VL))
+            eqs_used.append("DELVR2 = {} cm3/mol = V2 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR2)))
+        else:
+            if ligand == "OH-":
+                if ZC == 1:
+                    V2 = 0.45*S2 - 12
+                    eqs_used.append("V2 = {} cm3/mol = 0.45*S2 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
+                elif ZC == 2:
+                    if cation_element in transition_metals:
+                        V2 = 0.45*S2 - 12
+                        eqs_used.append("V2 = {} cm3/mol = 0.45*S2 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
+                    elif cation_element in alkaline_earths:
+                        V2 = 0.16*S2 + 4.9
+                        eqs_used.append("V2 = {} cm3/mol = 0.16*S2 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
+                    else:
+                        # cation element is not supported
+                        V2 = float('NaN')
+                elif ZC == 3:
+                    if cation_element in first_row_transition_metals:
+                        V2 = 0.45*S2 - 12
+                        eqs_used.append("V2 = {} cm3/mol = 0.45*S2 - 12, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
+                    else:
+                        V2 = 0.16*S2 + 4.9
+                        eqs_used.append("V2 = {} cm3/mol = 0.16*S2 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
+                elif ZC == 4:
+                    V2 = 0.16*S2 + 4.9
+                    eqs_used.append("V2 = {} cm3/mol = 0.16*S2 + 4.9, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V2)))
+                else:
+                    # cations with 5+ charge are not supported
+                    V2 = float("NaN")
+                
+                DELVR2 = V2 - VC - (2.0*VL) + V_water_298K
+            
+            else:
+                DELVR2  = 0.11419*V1 + 8.9432 # Eq. 62 in Sverjensky et al 1997
+                V2 = DELVR2 + DELVR1 + VC + (2.0*VL)
+                eqs_used.append("DELVR2 = {} cm3/mol = 0.11419*V1 + 8.9432, Eq. 62 in Sverjensky et al 1997".format("{0:.5g}".format(DELVR2)))
+                eqs_used.append("V2 = {} cm3/mol = DELVR2 + DELVR1 + VC + (2.0*VL), standard volume of the second complex".format("{0:.5g}".format(V2)))
 
     if not math.isnan(BETA3):
         ###### Calculations for the third complex
@@ -1264,75 +1291,89 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         if ligand == "OH-":
             H3 = H3 - H_water_298K
             eqs_used.append("H3 = {} cal/mol = H3 + H_water_298K, subtract the standard enthalpy of H2O at 298.15K as per the convention outlined in Shock et al., 1997".format("{0:.5g}".format(H3)))
-    
-        if ligand == "OH-":
-            if ZC == 1:
-                # third hydroxide complex of a monovalent cation is not supported
-                CP3 = float('NaN')
-            elif ZC in [2,3,4]:
-                CP3 = -2.28*S3 - 24.0
-                eqs_used.append("CP3 = {} cal/mol/K = -2.28*S3 - 24.0, Eqn for di-, tri-, tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP2)))
-            else:
-                # cations with >4 charge have been weeded out in entropy calculation already
-                CP3 = float('NaN')
-            DELCPR3 = CP3 - CPC - (3.0*CPL)
-            DELCP3 = DELCPR3 - DELCPR2 - DELCP1
+
+        if not math.isnan(Cp_3):
+            # if user provides a heat capacity
+            CP3 = Cp_3
+            DELCP3 = CP3 - CPC - CPL
+            eqs_used.append("Isobaric heat capacity of the complex CP3 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_3, CPC, CPL))
+            eqs_used.append("DELCP3 = {} cal/mol/K = CP3 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP3)))
         else:
-            if SSH97_cp_eqns and ligand == "Cl-":
-                # GB added 2024
-                DELCP3 = (0.89*CPC - 4.9)*2 + DELCP1
-                CP3 = DELCP3 + CP2 + CPL
-                eqs_used.append("DELCP3 = {} cal/mol/K = (0.89*CPC - 4.9)*2 + DELCP1, Eqn 58 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP3)))
-                eqs_used.append("CP3 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the third complex".format("{0:.5g}".format(CP3)))
-            elif SSH97_cp_eqns and ligand == "acetate" and ZC == 2:
-                # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
-                DELCP3 = (0.89*CPC + 20.6)*2 + DELCP1
-                CP3 = DELCP3 + CP2 + CPL
-                eqs_used.append("DELCP4 = {} cal/mol/K = (0.89*CPC + 20.6)*2 + DELCP1, Eqn 59 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP3)))
-                eqs_used.append("CP3 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the third complex".format("{0:.5g}".format(CP3)))
+            if ligand == "OH-":
+                if ZC == 1:
+                    # third hydroxide complex of a monovalent cation is not supported
+                    CP3 = float('NaN')
+                elif ZC in [2,3,4]:
+                    CP3 = -2.28*S3 - 24.0
+                    eqs_used.append("CP3 = {} cal/mol/K = -2.28*S3 - 24.0, Eqn for di-, tri-, tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP2)))
+                else:
+                    # cations with >4 charge have been weeded out in entropy calculation already
+                    CP3 = float('NaN')
+                DELCPR3 = CP3 - CPC - (3.0*CPL)
+                DELCP3 = DELCPR3 - DELCPR2 - DELCP1
             else:
-                # ES note from original fortran code: CHANGED 17 MARCH 1992!!!
-                gz = 0.89*CPC + 0.72*CPL + 16.3
-                DELCP3 = DELCP2 + gz
-                CP3 = DELCP3 + CP2 + CPL
-                eqs_used.append("gz = {} = 0.89*CPC + 0.72*CPL + 16.3, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(gz)))
-                eqs_used.append("DELCP3 = {} cal/mol/K = DELCP2 + gz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP3)))
-                eqs_used.append("CP3 = {} cal/mol/K = DELCP3 + CP2 + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP3)))
-    
-        if ligand == "OH-":
-            if ZC == 1:
-                # third complex of a monovalent cation is not supported
-                V3 = float("NaN")
-            elif ZC == 2:
-                if cation_element in transition_metals:
-                    V3 = 0.54*S3 - 4.8
-                    eqs_used.append("V3 = {} cm3/mol = 0.54*S3 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
-                elif cation_element in alkaline_earths:
+                if SSH97_cp_eqns and ligand == "Cl-":
+                    # GB added 2024
+                    DELCP3 = (0.89*CPC - 4.9)*2 + DELCP1
+                    CP3 = DELCP3 + CP2 + CPL
+                    eqs_used.append("DELCP3 = {} cal/mol/K = (0.89*CPC - 4.9)*2 + DELCP1, Eqn 58 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP3)))
+                    eqs_used.append("CP3 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the third complex".format("{0:.5g}".format(CP3)))
+                elif SSH97_cp_eqns and ligand == "acetate" and ZC == 2:
+                    # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
+                    DELCP3 = (0.89*CPC + 20.6)*2 + DELCP1
+                    CP3 = DELCP3 + CP2 + CPL
+                    eqs_used.append("DELCP4 = {} cal/mol/K = (0.89*CPC + 20.6)*2 + DELCP1, Eqn 59 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP3)))
+                    eqs_used.append("CP3 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the third complex".format("{0:.5g}".format(CP3)))
+                else:
+                    # ES note from original fortran code: CHANGED 17 MARCH 1992!!!
+                    gz = 0.89*CPC + 0.72*CPL + 16.3
+                    DELCP3 = DELCP2 + gz
+                    CP3 = DELCP3 + CP2 + CPL
+                    eqs_used.append("gz = {} = 0.89*CPC + 0.72*CPL + 16.3, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(gz)))
+                    eqs_used.append("DELCP3 = {} cal/mol/K = DELCP2 + gz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP3)))
+                    eqs_used.append("CP3 = {} cal/mol/K = DELCP3 + CP2 + CPL, standard isobaric heat capacity of the second complex".format("{0:.5g}".format(CP3)))
+
+        if not math.isnan(V_3):
+            # if user provides a volume
+            V3 = V_3
+            DELVR3 = V3 - VC - VL
+            eqs_used.append("Volume of the complex V3 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V3, VC, VL))
+            eqs_used.append("DELVR3 = {} cm3/mol = V3 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR3)))
+        else:
+            if ligand == "OH-":
+                if ZC == 1:
+                    # third complex of a monovalent cation is not supported
+                    V3 = float("NaN")
+                elif ZC == 2:
+                    if cation_element in transition_metals:
+                        V3 = 0.54*S3 - 4.8
+                        eqs_used.append("V3 = {} cm3/mol = 0.54*S3 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
+                    elif cation_element in alkaline_earths:
+                        V3 = 0.25*S3 + 11.7
+                        eqs_used.append("V3 = {} cm3/mol = 0.25*S3 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
+                    else:
+                        # cation element is not supported.
+                        V3 = float('NaN')
+                elif ZC == 3:
+                    if cation_element in first_row_transition_metals:
+                        V3 = 0.54*S3 - 4.8
+                        eqs_used.append("V3 = {} cm3/mol = 0.54*S3 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
+                    else:
+                        V3 = 0.25*S3 + 11.7
+                        eqs_used.append("V3 = {} cm3/mol = 0.25*S3 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
+                elif ZC == 4:
                     V3 = 0.25*S3 + 11.7
                     eqs_used.append("V3 = {} cm3/mol = 0.25*S3 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
                 else:
-                    # cation element is not supported.
+                    # cations with 5+ charge are not supported
                     V3 = float('NaN')
-            elif ZC == 3:
-                if cation_element in first_row_transition_metals:
-                    V3 = 0.54*S3 - 4.8
-                    eqs_used.append("V3 = {} cm3/mol = 0.54*S3 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
-                else:
-                    V3 = 0.25*S3 + 11.7
-                    eqs_used.append("V3 = {} cm3/mol = 0.25*S3 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
-            elif ZC == 4:
-                V3 = 0.25*S3 + 11.7
-                eqs_used.append("V3 = {} cm3/mol = 0.25*S3 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V3)))
+                    
+                DELVR3 = V3 - VC - (3.0*VL) + V_water_298K
             else:
-                # cations with 5+ charge are not supported
-                V3 = float('NaN')
-                
-            DELVR3 = V3 - VC - (3.0*VL) + V_water_298K
-        else:
-            DELVR3  = 0.11419*V2 + 8.9432
-            V3 = DELVR3 + DELVR2 + DELVR1 + VC + (3.0*VL)
-            eqs_used.append("DELVR3 = {} cm3/mol = 0.11419*V2+ 8.9432, Eq. 62 in Sverjensky et al 1997".format("{0:.5g}".format(DELVR3)))
-            eqs_used.append("V3 = {} cm3/mol = DELVR3 + DELVR2 + DELVR1 + VC + (3.0*VL), standard volume of the third complex".format("{0:.5g}".format(V3)))
+                DELVR3  = 0.11419*V2 + 8.9432
+                V3 = DELVR3 + DELVR2 + DELVR1 + VC + (3.0*VL)
+                eqs_used.append("DELVR3 = {} cm3/mol = 0.11419*V2+ 8.9432, Eq. 62 in Sverjensky et al 1997".format("{0:.5g}".format(DELVR3)))
+                eqs_used.append("V3 = {} cm3/mol = DELVR3 + DELVR2 + DELVR1 + VC + (3.0*VL), standard volume of the third complex".format("{0:.5g}".format(V3)))
 
     if not math.isnan(BETA4):
         ##### Calculations for the fourth complex
@@ -1425,78 +1466,93 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
         if ligand == "OH-":
             H4 = H4 - 2*H_water_298K
             eqs_used.append("H4 = {} cal/mol = H4 - 2*H_water_298K, subtract the standard enthalpy of two H2O at 298.15K as per the convention outlined in Shock et al., 1997".format("{0:.5g}".format(H4)))
-    
-        if ligand == "OH-":
-            if ZC == 1:
-                # fourth hydroxide complex of a monovalent cation is not supported
-                CP4 = float('NaN')
-            elif ZC == 2:
-                CP4 = -2.28*S4 - 106.2
-                eqs_used.append("CP4 = {} cal/mol/K = 2.28*S4 - 106.2, Eqn for divalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP4)))
-            elif ZC in [3,4]:
-                CP4 = -2.06*S4 - 34.5
-                eqs_used.append("CP4 = {} cal/mol/K = -2.06*S4 - 34.5, Eqn for tri- and tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP4)))
-            else:
-                # cations with >4 charge have been weeded out in entropy calculation already
-                CP4 = float('NaN')
-            DELCPR4 = CP4 - CPC - (4.0*CPL)
-            DELCP4 = DELCPR4 - DELCPR3 - DELCPR2 - DELCP1
+
+        if not math.isnan(Cp_4):
+            # if user provides a heat capacity
+            CP4 = Cp_4
+            DELCP4 = CP4 - CPC - CPL
+            eqs_used.append("Isobaric heat capacity of the complex CP4 = {}, cation CPC = {}, and ligand CPL = {}, cal/mol/K".format(Cp_4, CPC, CPL))
+            eqs_used.append("DELCP4 = {} cal/mol/K = CP4 - CPC - CPL, heat capacity of association of the first complex".format("{0:.5g}".format(DELCP4)))
         else:
-            if SSH97_cp_eqns and ligand == "Cl-":
-                # GB added 2024
-                DELCP4 = (0.89*CPC - 4.9)*3 + DELCP1
-                CP4 = DELCP4 + CP3 + CPL
-                eqs_used.append("DELCP4 = {} cal/mol/K = (0.89*CPC - 4.9)*3 + DELCP1, Eqn 58 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP4)))
-                eqs_used.append("CP4 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the fourth complex".format("{0:.5g}".format(CP4)))
-            elif SSH97_cp_eqns and ligand == "acetate" and ZC == 2:
-                # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
-                DELCP4 = (0.89*CPC + 20.6)*3 + DELCP1
-                CP4 = DELCP4 + CP3 + CPL
-                eqs_used.append("DELCP4 = (0.89*CPC + 20.6)*3 + DELCP1, Eqn 59 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP4)))
-                eqs_used.append("CP4 = {} cal/mol/K = DELCP4 + CP3 + CPL, standard isobaric heat capacity of the fourth complex".format("{0:.5g}".format(CP4)))
-            else:
-                # ES note from original fortran code: CHANGED 17 MARCH 1992!!!
-                gz = 0.89*CPC + 0.72*CPL + 16.3
-                DELCP4 = DELCP3 + gz
-                CP4 = DELCP4 + CP3 + CPL
-                eqs_used.append("gz = {} = 0.89*CPC + 0.72*CPL + 16.3, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(gz)))
-                eqs_used.append("DELCP4 = {} cal/mol/K = DELCP3 + gz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP4)))
-                eqs_used.append("CP4 = {} cal/mol/K = DELCP4 + CP3 + CPL, standard isobaric heat capacity of the fourth complex".format("{0:.5g}".format(CP4)))
-        if ligand == "OH-":
-            if ZC == 1:
-                # fourth complex of a monovalent cation is not supported
-                V4 = float('NaN')
-            elif ZC == 2:
-                if cation_element in transition_metals:
-                    V4 = 0.54*S4 - 4.8
-                    eqs_used.append("V4 = {} cm3/mol = 0.54*S4 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
-                elif cation_element in alkaline_earths:
-                    V4 = 0.25*S4 + 11.7
-                    eqs_used.append("V4 = {} cm3/mol = 0.25*S4 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
+            if ligand == "OH-":
+                if ZC == 1:
+                    # fourth hydroxide complex of a monovalent cation is not supported
+                    CP4 = float('NaN')
+                elif ZC == 2:
+                    CP4 = -2.28*S4 - 106.2
+                    eqs_used.append("CP4 = {} cal/mol/K = 2.28*S4 - 106.2, Eqn for divalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP4)))
+                elif ZC in [3,4]:
+                    CP4 = -2.06*S4 - 34.5
+                    eqs_used.append("CP4 = {} cal/mol/K = -2.06*S4 - 34.5, Eqn for tri- and tetravalent cations from Table 9 of Shock et al., 1997".format("{0:.5g}".format(CP4)))
                 else:
-                    # cation element is not supported.
+                    # cations with >4 charge have been weeded out in entropy calculation already
+                    CP4 = float('NaN')
+                DELCPR4 = CP4 - CPC - (4.0*CPL)
+                DELCP4 = DELCPR4 - DELCPR3 - DELCPR2 - DELCP1
+            else:
+                if SSH97_cp_eqns and ligand == "Cl-":
+                    # GB added 2024
+                    DELCP4 = (0.89*CPC - 4.9)*3 + DELCP1
+                    CP4 = DELCP4 + CP3 + CPL
+                    eqs_used.append("DELCP4 = {} cal/mol/K = (0.89*CPC - 4.9)*3 + DELCP1, Eqn 58 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP4)))
+                    eqs_used.append("CP4 = {} cal/mol/K = DELCP1 + CPC + CPL, standard isobaric heat capacity of the fourth complex".format("{0:.5g}".format(CP4)))
+                elif SSH97_cp_eqns and ligand == "acetate" and ZC == 2:
+                    # GB modified 2024 to add equations as they appear in Sverjensky et al., 1997:
+                    DELCP4 = (0.89*CPC + 20.6)*3 + DELCP1
+                    CP4 = DELCP4 + CP3 + CPL
+                    eqs_used.append("DELCP4 = (0.89*CPC + 20.6)*3 + DELCP1, Eqn 59 in Sverjensky et al. 1997".format("{0:.5g}".format(DELCP4)))
+                    eqs_used.append("CP4 = {} cal/mol/K = DELCP4 + CP3 + CPL, standard isobaric heat capacity of the fourth complex".format("{0:.5g}".format(CP4)))
+                else:
+                    # ES note from original fortran code: CHANGED 17 MARCH 1992!!!
+                    gz = 0.89*CPC + 0.72*CPL + 16.3
+                    DELCP4 = DELCP3 + gz
+                    CP4 = DELCP4 + CP3 + CPL
+                    eqs_used.append("gz = {} = 0.89*CPC + 0.72*CPL + 16.3, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(gz)))
+                    eqs_used.append("DELCP4 = {} cal/mol/K = DELCP3 + gz, unpublished equation pertaining to Haas et al 1995, Shock et al. 1995, and Sverjensky et al. 1997".format("{0:.5g}".format(DELCP4)))
+                    eqs_used.append("CP4 = {} cal/mol/K = DELCP4 + CP3 + CPL, standard isobaric heat capacity of the fourth complex".format("{0:.5g}".format(CP4)))
+        
+        if not math.isnan(V_4):
+            # if user provides a volume
+            V4 = V_4
+            DELVR4 = V4 - VC - VL
+            eqs_used.append("Volume of the complex V4 = {}, cation VC = {}, and ligand VL = {}, cal/mol/K".format(V4, VC, VL))
+            eqs_used.append("DELVR4 = {} cm3/mol = V4 - VC - VL, volume of association of the first complex".format("{0:.5g}".format(DELVR4)))
+        else:
+            if ligand == "OH-":
+                if ZC == 1:
+                    # fourth complex of a monovalent cation is not supported
                     V4 = float('NaN')
-            elif ZC == 3:
-                if cation_element in first_row_transition_metals:
-                    V4 = 0.54*S4 - 4.8
-                    eqs_used.append("V4 = {} cm3/mol = 0.54*S4 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
-                else:
+                elif ZC == 2:
+                    if cation_element in transition_metals:
+                        V4 = 0.54*S4 - 4.8
+                        eqs_used.append("V4 = {} cm3/mol = 0.54*S4 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
+                    elif cation_element in alkaline_earths:
+                        V4 = 0.25*S4 + 11.7
+                        eqs_used.append("V4 = {} cm3/mol = 0.25*S4 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
+                    else:
+                        # cation element is not supported.
+                        V4 = float('NaN')
+                elif ZC == 3:
+                    if cation_element in first_row_transition_metals:
+                        V4 = 0.54*S4 - 4.8
+                        eqs_used.append("V4 = {} cm3/mol = 0.54*S4 - 4.8, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
+                    else:
+                        V4 = 0.25*S4 + 11.7
+                        eqs_used.append("V4 = {} cm3/mol = 0.25*S4 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
+                elif ZC == 4:
                     V4 = 0.25*S4 + 11.7
                     eqs_used.append("V4 = {} cm3/mol = 0.25*S4 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
-            elif ZC == 4:
-                V4 = 0.25*S4 + 11.7
-                eqs_used.append("V4 = {} cm3/mol = 0.25*S4 + 11.7, see Table 9 in Shock et al., 1997".format("{0:.5g}".format(V4)))
+                else:
+                    # cations with 5+ charge are not supported
+                    V4 = float('NaN')
+                    
+                DELVR4 = V4 - VC - (4.0*VL) + 2*V_water_298K
             else:
-                # cations with 5+ charge are not supported
-                V4 = float('NaN')
-                
-            DELVR4 = V4 - VC - (4.0*VL) + 2*V_water_298K
-        else:
-            DELVR4  = 0.11419*V3 + 8.9432 # Eq. 62 in Sverjensky et al 1997
-            V4 = DELVR4 + DELVR3 + DELVR2 + DELVR1 + VC + (4.0*VL)
-            eqs_used.append("DELVR4 = {} cm3/mol = 0.11419*V3 + 8.9432, Eq. 62 in Sverjensky et al 1997".format("{0:.5g}".format(DELVR4)))
-            eqs_used.append("V4 = {} cm3/mol = DELVR4 + DELVR3 + DELVR2 + DELVR1 + VC + (4.0*VL), standard volume of the fourth complex".format("{0:.5g}".format(V4)))
-    
+                DELVR4  = 0.11419*V3 + 8.9432 # Eq. 62 in Sverjensky et al 1997
+                V4 = DELVR4 + DELVR3 + DELVR2 + DELVR1 + VC + (4.0*VL)
+                eqs_used.append("DELVR4 = {} cm3/mol = 0.11419*V3 + 8.9432, Eq. 62 in Sverjensky et al 1997".format("{0:.5g}".format(DELVR4)))
+                eqs_used.append("V4 = {} cm3/mol = DELVR4 + DELVR3 + DELVR2 + DELVR1 + VC + (4.0*VL), standard volume of the fourth complex".format("{0:.5g}".format(V4)))
+        
         # override properties and parameters if they are supplied by the user
         if not math.isnan(G_1):
             G1 = G_1
