@@ -731,48 +731,58 @@ def complicate(cation=None, ligand=None, beta=None, sass=None, out_name=None,
     
     if not V_or_Cp:
         return pd.DataFrame(), eqs_used, warning_list, duplicate_list
-    
-    if cation_entry["tag"].values[0] != "basis" and cation_entry["tag"].values[0] != "aux" and correct_basis:
-        cation_dissrxn = cation_entry["dissrxn"].values[0]
-        cation_dissrxn_split = cation_dissrxn.split(" ")
-        cation_dissrxn_names = cation_dissrxn_split[1::2]
-        cation_dissrxn_coeffs = cation_dissrxn_split[::2]
-        
-        cation_dissrxn_dict_prediv = {name:float(coeff) for name,coeff in zip(cation_dissrxn_names, cation_dissrxn_coeffs)}
-        div_val = abs(cation_dissrxn_dict_prediv[cation])
-        cation_dissrxn_dict = {name:coeff/div_val for name,coeff in cation_dissrxn_dict_prediv.items()}
-        del cation_dissrxn_dict[cation]
-        
-        cation_dissrxn_dict = cation_dissrxn_dict/abs(cation_dissrxn_dict[cation])
 
-        msg = (cation + " is not a strict or auxiliary basis species. "
-              "Dissociation reactions of the complex will assume the "
-              "cation dissociates according to: " + cation_dissrxn)
-        warning_list.append(msg)
+    if "tag" in list(cation_entry.keys()):
+        if cation_entry["tag"].values[0] != "basis" and cation_entry["tag"].values[0] != "aux" and correct_basis:
+            cation_dissrxn = cation_entry["dissrxn"].values[0]
+            cation_dissrxn_split = cation_dissrxn.split(" ")
+            cation_dissrxn_names = cation_dissrxn_split[1::2]
+            cation_dissrxn_coeffs = cation_dissrxn_split[::2]
+            
+            cation_dissrxn_dict_prediv = {name:float(coeff) for name,coeff in zip(cation_dissrxn_names, cation_dissrxn_coeffs)}
+            div_val = abs(cation_dissrxn_dict_prediv[cation])
+            cation_dissrxn_dict = {name:coeff/div_val for name,coeff in cation_dissrxn_dict_prediv.items()}
+            del cation_dissrxn_dict[cation]
+            
+            cation_dissrxn_dict = cation_dissrxn_dict/abs(cation_dissrxn_dict[cation])
+    
+            msg = (cation + " is not a strict or auxiliary basis species. "
+                  "Dissociation reactions of the complex will assume the "
+                  "cation dissociates according to: " + cation_dissrxn)
+            warning_list.append(msg)
+        else:
+            cation_dissrxn_dict = {cation:1}
+
+
+        if ligand_entry["tag"].values[0] != "basis" and ligand_entry["tag"].values[0] != "aux" and correct_basis:
+            ligand_dissrxn = ligand_entry["dissrxn"].values[0]
+            ligand_dissrxn_split = ligand_dissrxn.split(" ")
+            ligand_dissrxn_names = ligand_dissrxn_split[1::2]
+            ligand_dissrxn_coeffs = ligand_dissrxn_split[::2]
+            
+            ligand_dissrxn_dict_prediv = {name:float(coeff) for name,coeff in zip(ligand_dissrxn_names, ligand_dissrxn_coeffs)}
+            div_val = abs(ligand_dissrxn_dict_prediv[ligand])
+            ligand_dissrxn_dict = {name:coeff/div_val for name,coeff in ligand_dissrxn_dict_prediv.items()}
+            del ligand_dissrxn_dict[ligand]
+    
+            msg = (ligand + " is not a strict or auxiliary basis species. "
+                  "Dissociation reactions of the complex will assume the "
+                  "ligand dissociates according to: " + ligand_dissrxn)
+            warning_list.append(msg)
+        else:
+            ligand_dissrxn_dict = {ligand:1}
+
+        # handle complex formula_ox
+        cation_formula_ox_dict = __get_formula_ox_dict(cation, df=thermo_data)
+        ligand_formula_ox_dict = __get_formula_ox_dict(ligand, df=thermo_data)
+    
     else:
         cation_dissrxn_dict = {cation:1}
-
-    if ligand_entry["tag"].values[0] != "basis" and ligand_entry["tag"].values[0] != "aux" and correct_basis:
-        ligand_dissrxn = ligand_entry["dissrxn"].values[0]
-        ligand_dissrxn_split = ligand_dissrxn.split(" ")
-        ligand_dissrxn_names = ligand_dissrxn_split[1::2]
-        ligand_dissrxn_coeffs = ligand_dissrxn_split[::2]
-        
-        ligand_dissrxn_dict_prediv = {name:float(coeff) for name,coeff in zip(ligand_dissrxn_names, ligand_dissrxn_coeffs)}
-        div_val = abs(ligand_dissrxn_dict_prediv[ligand])
-        ligand_dissrxn_dict = {name:coeff/div_val for name,coeff in ligand_dissrxn_dict_prediv.items()}
-        del ligand_dissrxn_dict[ligand]
-
-        msg = (ligand + " is not a strict or auxiliary basis species. "
-              "Dissociation reactions of the complex will assume the "
-              "ligand dissociates according to: " + ligand_dissrxn)
-        warning_list.append(msg)
-    else:
         ligand_dissrxn_dict = {ligand:1}
+        cation_formula_ox_dict = {}
+        ligand_formula_ox_dict = {}
     
-    # handle complex formula_ox
-    cation_formula_ox_dict = __get_formula_ox_dict(cation, df=thermo_data)
-    ligand_formula_ox_dict = __get_formula_ox_dict(ligand, df=thermo_data)
+
     
     ZC = str(cation_entry["z.T"].values[0])
     GC = str(cation_entry["G"].values[0])
